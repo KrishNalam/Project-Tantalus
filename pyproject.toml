@@ -14,6 +14,7 @@ dependencies = [
     "pandas>=3.0.6",
     "rdkit>=2026.3.6",
     "scikit-learn>=1.9.1",
+    "torch-geometric>=2.8.0.post1",
 ]
 
 [project.scripts]
@@ -22,3 +23,9 @@ tantalus = "tantalus:main"
 [build-system]
 requires = ["uv_build>=0.12.20,<0.13.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.9",
+]

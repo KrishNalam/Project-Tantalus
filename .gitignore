@@ -1,0 +1,25 @@
+# Data and model artifacts (see CLAUDE.md)
+data/
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+
+# Environment
+.env
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
