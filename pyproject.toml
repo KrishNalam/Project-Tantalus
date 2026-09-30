@@ -14,6 +14,7 @@ dependencies = [
     "pandas>=3.0.6",
     "rdkit>=2026.3.6",
     "scikit-learn>=1.9.1",
+    "torch>=2.14.1",
     "torch-geometric>=2.8.0.post1",
 ]
 
@@ -23,6 +24,17 @@ tantalus = "tantalus:main"
 [build-system]
 requires = ["uv_build>=0.12.20,<0.13.0"]
 build-backend = "uv_build"
+
+# PyTorch Geometric does not depend on torch directly (it can't know which
+# CPU/CUDA build you want). Route torch to the CPU-only wheel index so we get the
+# small ~200MB build instead of PyPI's default CUDA build. See docs/decisions.md.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
 
 [dependency-groups]
 dev = [
