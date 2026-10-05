@@ -4,7 +4,7 @@
 
 ### What is a SMILES string, and why is the same molecule representable multiple ways?
 
-TODO:
+Smiles string - a short text line that describes the chemical structure of a molecule (only uses ASCII charectars)
 
 ### Why must SMILES be canonicalized before any dedup, merge, or train/test split?
 
