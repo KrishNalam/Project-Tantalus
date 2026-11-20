@@ -8,13 +8,25 @@ Smiles string - a short text line that describes the chemical structure of a mol
 
 ### Why must SMILES be canonicalized before any dedup, merge, or train/test split?
 
-TODO:
-
 ### Why does `canonicalize` return `None` for invalid input instead of raising?
 
+### In the molecular graph, what are the nodes and edges? Why are hydrogens implicit?
+
 TODO:
 
-### In the molecular graph, what are the nodes and edges? Why are hydrogens implicit?
+### What is atom hybridization (SP / SP2 / SP3), and why might it matter for taste?
+
+TODO:
+
+### What does it mean for a bond to be "conjugated"?
+
+TODO:
+
+### Why encode yes/no properties (aromatic, in ring) as a single 0/1 flag instead of a two-slot one-hot?
+
+TODO:
+
+### How does PyG represent a molecule with no bonds (e.g. `[Na+]`), and why must `edge_attr` still have shape `[0, 7]`?
 
 TODO:
 

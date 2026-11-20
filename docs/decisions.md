@@ -27,3 +27,20 @@ pulls the CUDA build (~2–3 GB) — useless on this CPU-only laptop. `explicit 
 the CPU index scoped to torch only, so it doesn't shadow PyPI for other packages.
 **Rejected:** default PyPI torch (drags in CUDA); a `torch==…+cpu` local-version pin
 (fiddly with uv's resolver).
+
+### 2026-11-19 — Atom/bond feature vector layout (33 + 7 dims)
+
+**Decision:** `atom_features` concatenates one-hots (each with a trailing "other" slot) for
+element (10), degree (7), formal charge (4), hybridization (4), total H count (6), then two
+0/1 flags for aromatic and in-ring → 33 dims. `bond_features` is bond-type one-hot with an
+"other" slot (5) plus conjugated and in-ring flags → 7 dims. Widths are exported as
+`ATOM_FEATURE_DIM` / `BOND_FEATURE_DIM`, computed from the choice lists. `smiles_to_graph`
+stores each bond in both directions with duplicated `edge_attr` rows, and keeps the
+canonical SMILES on the `Data` object.
+**Why:** One-hot avoids implying a false ordering (e.g. "N > C"); the "other" slot means
+rare elements/charges/bond types (dative, zwitterions) still get a valid vector instead of
+crashing. Booleans need only one dimension. Deriving dims from the lists keeps model
+input sizes in sync if a choice list changes.
+**Rejected:** integer-coded categories (fake ordinal structure); a bond-type one-hot
+without "other" (would silently encode unusual bonds as all-zeros); two-slot one-hots for
+booleans (redundant).
