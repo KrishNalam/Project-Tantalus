@@ -46,6 +46,14 @@ TODO:
 
 TODO:
 
+### What is an "activity cliff", and why do sucrose and sucralose illustrate one?
+
+TODO:
+
+### Why are notebooks committed with outputs cleared?
+
+TODO:
+
 ### Why does this project use a CPU-only PyTorch build, and how does uv enforce that?
 
 TODO:

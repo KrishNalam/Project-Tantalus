@@ -5,7 +5,7 @@
 - [x] CPU PyTorch installs and imports (`import torch, torch_geometric`)
 - [x] Project skeleton exists (`data/{raw,processed}`, `notebooks/`, `docs/`, `src/tantalus/models/`)
 - [x] `featurize.py`: `canonicalize` / `atom_features` / `bond_features` / `smiles_to_graph` / `smiles_to_fingerprint`
-- [ ] `notebooks/00_explore.ipynb` runs end-to-end
+- [x] `notebooks/00_explore.ipynb` runs end-to-end
 - [ ] `tests/test_featurize.py` written (by me) and reviewed
 - [ ] Datasets downloaded to `data/raw/`
 
