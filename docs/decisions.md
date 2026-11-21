@@ -44,3 +44,17 @@ input sizes in sync if a choice list changes.
 **Rejected:** integer-coded categories (fake ordinal structure); a bond-type one-hot
 without "other" (would silently encode unusual bonds as all-zeros); two-slot one-hots for
 booleans (redundant).
+
+### 2026-11-20 — Pin raw datasets to a fixed version and verify by checksum
+
+**Decision:** `scripts/download_data.py` fetches ChemTastesDB from a fixed Zenodo record
+(`15051366`, v2.1, CC-BY-4.0) and checks each file against a hard-coded MD5. It downloads
+to a `.part` file and only renames it after the checksum matches. Files already present with
+the right checksum are skipped. Only the database/references `.xlsx` and the readme are
+fetched. The `.rar` of per-molecule structure files is skipped, because the SMILES are in the xlsx.
+**Why:** Zenodo's "latest version" link moves (v1.0 → v2.1 already). Pinning the record keeps
+results reproducible, and the checksum catches truncated or altered downloads. Raw data stays
+out of git (`data/` is gitignored), so the script is the committed recipe for rebuilding it.
+**Rejected:** following the "latest" redirect (silent dataset drift between runs); committing
+the raw files (licence/size, and CLAUDE.md forbids committing `data/`); a manual download
+README with no checks (not reproducible).

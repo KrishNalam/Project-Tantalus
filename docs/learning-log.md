@@ -61,3 +61,7 @@ TODO:
 ### What's the difference between the graph representation (for the GNN) and the fingerprint (for baselines)?
 
 TODO:
+
+### Why pin a dataset to a specific version (Zenodo record) and verify its MD5 checksum, instead of just downloading "the latest"?
+
+TODO:
