@@ -3,9 +3,9 @@
 Usage:
     uv run python scripts/download_data.py
 
-Files are pinned to a specific Zenodo record and verified by MD5, so every run
+Files are pinned to a specific release and verified by MD5, so every run
 fetches exactly the same bytes. Files that already exist with the right
-checksum are skipped. BitterDB and SweetenersDB are not handled yet.
+checksum are skipped. SweetenersDB is not handled yet.
 """
 
 import hashlib
@@ -22,6 +22,17 @@ CHEMTASTESDB_FILES = {
     "ChemTastesDB_references.xlsx": "a4ca4e509fc53ee1d1f9a8ae12bb11a4",
     "ChemTastesDB_readme.pdf": "2e14bd2252a2603cc2d45ff62e29a188",
 }
+
+# BitterDB 2019 release, CC-BY-NC-ND-4.0: https://bitterdb.agri.huji.ac.il/dbbitter.php
+# Only the compound table is needed: it holds SMILES for every known bitter compound.
+BITTERDB_URL = "https://bitterdb.agri.huji.ac.il/downloads/2019/?file={name}"
+BITTERDB_FILES = {
+    "BitterCompoundsPropA_2019.csv": "482e8e308fac817ad90d3bebb3071a5e",
+}
+
+# Some hosts (BitterDB) return an HTML error page to urllib's default
+# "Python-urllib" User-Agent, so send a generic client name instead.
+USER_AGENT = "tantalus-download/0.1"
 
 
 def md5_of(path: Path) -> str:
@@ -44,7 +55,8 @@ def fetch(url: str, dest: Path, expected_md5: str) -> None:
         print(f"ok (cached)  {dest.name}")
         return
     tmp = dest.with_suffix(dest.suffix + ".part")
-    with urllib.request.urlopen(url, timeout=60) as resp, tmp.open("wb") as f:
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(request, timeout=60) as resp, tmp.open("wb") as f:
         f.write(resp.read())
     actual = md5_of(tmp)
     if actual != expected_md5:
@@ -65,10 +77,19 @@ def download_chemtastesdb() -> None:
         fetch(url, out_dir / name, md5)
 
 
+def download_bitterdb() -> None:
+    """Fetch the pinned BitterDB compound table into data/raw/bitterdb/."""
+    out_dir = RAW_DIR / "bitterdb"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for name, md5 in BITTERDB_FILES.items():
+        fetch(BITTERDB_URL.format(name=name), out_dir / name, md5)
+
+
 def main() -> int:
     """Download all supported datasets; return a process exit code."""
     try:
         download_chemtastesdb()
+        download_bitterdb()
     except (OSError, ValueError) as exc:  # network/disk errors, MD5 mismatch
         print(f"error: {exc}", file=sys.stderr)
         return 1

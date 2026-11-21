@@ -65,3 +65,11 @@ TODO:
 ### Why pin a dataset to a specific version (Zenodo record) and verify its MD5 checksum, instead of just downloading "the latest"?
 
 TODO:
+
+### What does a `.` in a SMILES string mean (e.g. a drug drawn as a sulfate salt), and why must salts/counter-ions be handled before dedup and splitting?
+
+TODO:
+
+### What do the "NC" and "ND" terms in a CC-BY-NC-ND licence allow and forbid, and what do they mean for publishing a merged dataset or trained model?
+
+TODO:

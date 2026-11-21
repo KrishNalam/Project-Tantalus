@@ -7,7 +7,7 @@
 - [x] `featurize.py`: `canonicalize` / `atom_features` / `bond_features` / `smiles_to_graph` / `smiles_to_fingerprint`
 - [x] `notebooks/00_explore.ipynb` runs end-to-end
 - [ ] `tests/test_featurize.py` written (by me) and reviewed
-- [ ] Datasets downloaded to `data/raw/` (ChemTastesDB v2.1 done via `scripts/download_data.py`; BitterDB, SweetenersDB pending)
+- [ ] Datasets downloaded to `data/raw/` (ChemTastesDB v2.1 and BitterDB 2019 done via `scripts/download_data.py`; SweetenersDB pending)
 
 Done when: the featurizer works on a known molecule and the notebook demonstrates
 canonicalization, atom features, fingerprints, and Tanimoto similarity.

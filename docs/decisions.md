@@ -58,3 +58,17 @@ out of git (`data/` is gitignored), so the script is the committed recipe for re
 **Rejected:** following the "latest" redirect (silent dataset drift between runs); committing
 the raw files (licence/size, and CLAUDE.md forbids committing `data/`); a manual download
 README with no checks (not reproducible).
+
+### 2026-11-20 — Add BitterDB (2019 release, compound table only)
+
+**Decision:** `scripts/download_data.py` also fetches `BitterCompoundsPropA_2019.csv` from
+BitterDB's versioned `downloads/2019/` path into `data/raw/bitterdb/`, MD5-pinned like
+ChemTastesDB. All requests now send a generic `User-Agent` (`tantalus-download/0.1`).
+**Why:** The compound table is the only BitterDB file with SMILES (1041 rows). The receptor,
+name and reference tables aren't needed for taste labels. BitterDB returns an HTML error page
+(HTTP 200) to urllib's default `Python-urllib` agent. The MD5 check caught this, so the
+script sets a neutral agent string. BitterDB is CC-BY-NC-ND-4.0, which is fine for a
+non-commercial portfolio project, but we must not redistribute the raw or merged data.
+**Rejected:** fetching all six 2019 CSVs (unused); a browser-spoofing User-Agent (a plain
+client name is enough and more honest); dropping the checksum for this host (it caught the
+error page, which proves the check is useful).
