@@ -85,3 +85,11 @@ TODO:
 ### What is stereochemistry (the `@`/`@@` in a SMILES), and what do we lose by using stereo-free SMILES? (Hint: enantiomers can taste different.)
 
 TODO:
+
+### What is a Bemis–Murcko scaffold, and why does splitting by scaffold give a more honest test score than a random split?
+
+TODO:
+
+### All acyclic molecules share the empty scaffold `""` (about 18% of our data), and benzene is another ~17%. How should a scaffold split handle a few huge groups like these, and what goes wrong if one lands in the test set?
+
+TODO:

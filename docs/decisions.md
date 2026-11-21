@@ -104,3 +104,22 @@ taste, so a "bitter to mice" label is the wrong target.
 **Rejected:** `Isomeric_smiles` (breaks cross-source matching, and one of them fails to
 parse); keeping all 30 columns (they're descriptors we can recompute, and unused); keeping
 non-human rows as negatives (we have no evidence they're not bitter to humans either).
+
+### 2026-11-21 — Scaffold key: specific Bemis–Murcko scaffold, stereo-free, "" for acyclic
+
+**Decision:** `data.murcko_scaffold(smiles)` returns RDKit's `MurckoScaffoldSmiles` with
+`includeChirality=False`. It uses the specific (atom- and bond-typed) scaffold, not the
+generic carbon-skeleton one. Acyclic molecules return `""` and form one shared group.
+Unparsable input returns `None`, like `canonicalize`. Salts are passed through: ring-free
+counter-ions like `[Na+]` vanish from the scaffold on their own.
+**Why:** The scaffold is the grouping key for the scaffold split. Molecules that share a
+scaffold go to the same side, so the test set measures generalization to new chemotypes.
+The specific scaffold is the standard choice (MoleculeNet / DeepChem), so results are
+comparable. Ignoring chirality matches the stereo-free SMILES used for dedup. On the
+3879 unique molecules of ChemTastesDB + BitterDB, there are 1005 scaffolds. 698 molecules
+are acyclic (`""`), and 668 have a plain benzene scaffold.
+**Rejected:** the generic scaffold (`MakeScaffoldGeneric`). It merges groups more
+coarsely, which makes a harder but less standard split. It could be a later comparison.
+Giving each acyclic molecule its own key would let near-identical chains (e.g. sugars
+vs. sugar alcohols) leak across the split. Stripping salts first was also rejected because
+the salt rule is still an open owner decision.

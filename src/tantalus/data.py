@@ -7,8 +7,9 @@ Every loader returns two tables: the rows it kept and the rows it dropped
 from pathlib import Path
 
 import pandas as pd
+from rdkit.Chem.Scaffolds import MurckoScaffold
 
-from tantalus.featurize import canonicalize
+from tantalus.featurize import _parse, canonicalize
 
 RAW_DIR = Path(__file__).resolve().parents[2] / "data" / "raw"
 CHEMTASTESDB_XLSX = RAW_DIR / "chemtastesdb" / "ChemTastesDB_database.xlsx"
@@ -118,3 +119,31 @@ def load_bitterdb(path: Path = BITTERDB_CSV) -> tuple[pd.DataFrame, pd.DataFrame
 
     dropped = pd.concat([not_human, no_smiles, invalid], ignore_index=True)
     return df.drop(columns="bitter_human").reset_index(drop=True), dropped
+
+
+def murcko_scaffold(smiles: str) -> str | None:
+    """Return the Bemis-Murcko scaffold of a molecule as canonical SMILES.
+
+    The scaffold is the molecule's ring systems plus the linker atoms that
+    connect them, with every side chain removed. Molecules that share a
+    scaffold are close analogues, so the scaffold split keeps each scaffold
+    group entirely in train, validation or test.
+
+    This is the specific (atom- and bond-typed) scaffold, not the generic
+    "all carbon, all single bonds" version. Stereochemistry is ignored, to
+    match the stereo-free SMILES used everywhere else.
+
+    Args:
+        smiles: A SMILES string, ideally already canonical.
+
+    Returns:
+        The scaffold's canonical SMILES. Acyclic molecules have no rings and
+        return ``""``, so they all form one group. Returns ``None`` if the
+        SMILES cannot be parsed. For multi-fragment inputs (salts), ring-free
+        fragments such as ``[Na+]`` disappear and ring-containing fragments
+        are kept, joined by ``.``.
+    """
+    mol = _parse(smiles)
+    if mol is None:
+        return None
+    return MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=False)
