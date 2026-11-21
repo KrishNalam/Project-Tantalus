@@ -89,3 +89,18 @@ every drop" checkable and lets the Phase 1 report tabulate drops by source and r
 **Rejected:** trusting the source's canonical SMILES (cross-toolkit mismatch); silently
 filtering bad rows (drops become invisible); doing dedup and label mapping inside the
 loader (each needs its own decision: salts and conflicting labels, see DEVLOG 2026-11-21).
+
+### 2026-11-21 — BitterDB loader: stereo-free SMILES, human-only rows
+
+**Decision:** `data.load_bitterdb` reads 6 of BitterDB's 30 columns. It canonicalizes the
+stereo-free `canonical_smiles` column with RDKit, not `Isomeric_smiles`, and drops the 10 rows
+whose `Human` flag is 0 (bitter only to mice and other species). Like `load_chemtastesdb`,
+it returns `(kept, dropped)`. Result: 1031 kept (997 unique canonical SMILES) and 10 dropped.
+**Why:** ChemTastesDB's SMILES contain no stereochemistry (0 of 4075 have `@`). If one source
+keeps stereo and the other doesn't, the same molecule gets two keys. With stereo-free SMILES,
+965 of 997 BitterDB molecules match a ChemTastesDB entry. With isomeric SMILES, only 536 do.
+Unmatched duplicates could end up on both sides of the split. The project predicts *human*
+taste, so a "bitter to mice" label is the wrong target.
+**Rejected:** `Isomeric_smiles` (breaks cross-source matching, and one of them fails to
+parse); keeping all 30 columns (they're descriptors we can recompute, and unused); keeping
+non-human rows as negatives (we have no evidence they're not bitter to humans either).

@@ -81,3 +81,7 @@ TODO:
 ### Why can't we simply strip counter-ions (keep the largest fragment) for every molecule, when some labels are "salty" or "umami"?
 
 TODO:
+
+### What is stereochemistry (the `@`/`@@` in a SMILES), and what do we lose by using stereo-free SMILES? (Hint: enantiomers can taste different.)
+
+TODO:

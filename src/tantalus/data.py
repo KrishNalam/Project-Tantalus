@@ -12,6 +12,7 @@ from tantalus.featurize import canonicalize
 
 RAW_DIR = Path(__file__).resolve().parents[2] / "data" / "raw"
 CHEMTASTESDB_XLSX = RAW_DIR / "chemtastesdb" / "ChemTastesDB_database.xlsx"
+BITTERDB_CSV = RAW_DIR / "bitterdb" / "BitterCompoundsPropA_2019.csv"
 
 # Original ChemTastesDB headers -> snake_case names used in this project.
 _CHEMTASTESDB_COLUMNS = {
@@ -23,6 +24,17 @@ _CHEMTASTESDB_COLUMNS = {
     "Taste": "taste",
     "Class taste": "class_taste",
     "Reference_(cod)/[pp]": "references",
+}
+
+# BitterDB columns we keep (most of its 30 are descriptors we recompute or don't
+# need) -> snake_case names matching the ChemTastesDB loader where possible.
+_BITTERDB_COLUMNS = {
+    "cid": "source_id",
+    "pubChemID": "pubchem_cid",
+    "Cas_Number_Final": "cas",
+    "InChiKey": "inchikey",
+    "canonical_smiles": "source_smiles",
+    "Human": "bitter_human",
 }
 
 
@@ -68,3 +80,41 @@ def load_chemtastesdb(
 
     dropped = pd.concat([no_smiles, invalid], ignore_index=True)
     return df.reset_index(drop=True), dropped
+
+
+def load_bitterdb(path: Path = BITTERDB_CSV) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load the BitterDB 2019 compound table and add RDKit ``canonical_smiles``.
+
+    Uses BitterDB's stereo-free ``canonical_smiles`` column, not
+    ``Isomeric_smiles``, because ChemTastesDB has no stereochemistry either.
+    Mixing the two would make the same molecule look different across sources
+    and break dedup.
+
+    BitterDB records bitterness per species. Rows that are not bitter to
+    humans (``Human == "0"``, e.g. mouse-only) are dropped, because this
+    project predicts human taste. No dedup or salt stripping happens here.
+
+    Args:
+        path: Path to ``BitterCompoundsPropA_2019.csv``.
+
+    Returns:
+        ``(kept, dropped)`` with the kept columns renamed, plus
+        ``canonical_smiles`` and ``source="bitterdb"``. ``dropped`` has the
+        same columns plus a ``drop_reason``.
+    """
+    df = pd.read_csv(path, dtype=str, usecols=list(_BITTERDB_COLUMNS))
+    df = df.rename(columns=_BITTERDB_COLUMNS)
+    df["source"] = "bitterdb"
+
+    df, not_human = _split_drops(
+        df, df["bitter_human"] != "1", "not bitter to humans (other species only)"
+    )
+    df, no_smiles = _split_drops(df, df["source_smiles"].isna(), "no SMILES")
+
+    df = df.assign(canonical_smiles=df["source_smiles"].map(canonicalize))
+    df, invalid = _split_drops(
+        df, df["canonical_smiles"].isna(), "SMILES not parsable by RDKit"
+    )
+
+    dropped = pd.concat([not_human, no_smiles, invalid], ignore_index=True)
+    return df.drop(columns="bitter_human").reset_index(drop=True), dropped
