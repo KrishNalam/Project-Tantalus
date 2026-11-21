@@ -4,6 +4,10 @@ Every loader returns two tables: the rows it kept and the rows it dropped
 (with a ``drop_reason`` column), so every drop can be counted and documented.
 """
 
+import math
+import random
+from collections import defaultdict
+from collections.abc import Sequence
 from pathlib import Path
 
 import pandas as pd
@@ -147,3 +151,67 @@ def murcko_scaffold(smiles: str) -> str | None:
     if mol is None:
         return None
     return MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=False)
+
+
+def scaffold_split(
+    smiles: Sequence[str],
+    frac: tuple[float, float, float] = (0.8, 0.1, 0.1),
+    seed: int = 0,
+) -> tuple[list[int], list[int], list[int]]:
+    """Split molecules into train/val/test so that no scaffold spans two splits.
+
+    This is the "balanced" scaffold split used by Chemprop. Molecules are
+    grouped by :func:`murcko_scaffold`. Groups bigger than half the val or test
+    target size are "big" and are placed first, so they always land in train
+    (otherwise one huge group could fill the whole test set). The remaining
+    small groups are shuffled with ``seed``, which gives a different but still
+    scaffold-disjoint split per seed. Groups are then assigned greedily: train
+    while it has room, then val, then test.
+
+    Duplicate SMILES share a scaffold, so they always land in the same split.
+
+    Args:
+        smiles: SMILES strings, one per row (ideally canonical and cleaned).
+        frac: Target (train, val, test) fractions. Must sum to 1. Real sizes
+            differ slightly because whole groups are assigned at once.
+        seed: Seed for shuffling the group order.
+
+    Returns:
+        ``(train_idx, val_idx, test_idx)``: positional indices into ``smiles``.
+
+    Raises:
+        ValueError: If ``frac`` doesn't sum to 1, or a SMILES can't be parsed.
+            Unparsable rows should be dropped (and logged) by the loaders, so
+            reaching this point means a bug upstream, not a row to skip.
+    """
+    if not math.isclose(sum(frac), 1.0):
+        raise ValueError(f"frac must sum to 1, got {frac}")
+
+    groups: dict[str, list[int]] = defaultdict(list)
+    for i, smi in enumerate(smiles):
+        scaffold = murcko_scaffold(smi)
+        if scaffold is None:
+            raise ValueError(f"cannot compute scaffold for row {i}: {smi!r}")
+        groups[scaffold].append(i)
+
+    n = len(smiles)
+    train_size, val_size, test_size = (f * n for f in frac)
+    big_cutoff = min(val_size, test_size) / 2
+    big = [g for g in groups.values() if len(g) > big_cutoff]
+    small = [g for g in groups.values() if len(g) <= big_cutoff]
+
+    rng = random.Random(seed)
+    rng.shuffle(big)
+    rng.shuffle(small)
+
+    train: list[int] = []
+    val: list[int] = []
+    test: list[int] = []
+    for group in big + small:
+        if len(train) + len(group) <= train_size:
+            train.extend(group)
+        elif len(val) + len(group) <= val_size:
+            val.extend(group)
+        else:
+            test.extend(group)
+    return sorted(train), sorted(val), sorted(test)

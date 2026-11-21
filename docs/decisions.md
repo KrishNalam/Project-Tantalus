@@ -123,3 +123,24 @@ coarsely, which makes a harder but less standard split. It could be a later comp
 Giving each acyclic molecule its own key would let near-identical chains (e.g. sugars
 vs. sugar alcohols) leak across the split. Stripping salts first was also rejected because
 the salt rule is still an open owner decision.
+
+### 2026-11-21 — Scaffold split: Chemprop-style "balanced" split, seeded
+
+**Decision:** `data.scaffold_split(smiles, frac=(0.8, 0.1, 0.1), seed=0)` groups rows by
+`murcko_scaffold`. Groups larger than half the smaller of the val/test target sizes count as
+"big" and are placed first, so they always go to train. The remaining groups are shuffled
+with `seed` and assigned greedily (train while it fits, then val, then test). It returns
+sorted positional indices `(train, val, test)`. It raises `ValueError` on an unparsable
+SMILES or on fractions that don't sum to 1. On the 3879 unique ChemTastesDB + BitterDB
+molecules: 3103 / 387 / 389, with 2 big groups (acyclic `""` and benzene), both in train.
+**Why:** Every scaffold sits in exactly one split, so the test set holds unseen chemotypes.
+Seeding only the small groups gives different, still scaffold-disjoint splits, which we need
+for the "mean ± std over seeds" rule (test sets for seeds 0 and 1 share only 35 of ~389
+molecules). Putting big groups in train first stops a single 700-molecule group from
+becoming the entire test set. Duplicate SMILES share a scaffold, so they can't leak across
+splits even before dedup. Raising instead of skipping bad rows keeps drops in the loaders,
+where they are logged.
+**Rejected:** the deterministic DeepChem split (largest groups first, no randomness). It
+gives one split only, so seed variance just measures model noise, not split noise. A fully
+random group order would let one huge group land in val/test. Returning boolean masks or a
+split column would tie the function to a DataFrame; plain indices work for any sequence.

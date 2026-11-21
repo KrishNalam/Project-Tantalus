@@ -93,3 +93,7 @@ TODO:
 ### All acyclic molecules share the empty scaffold `""` (about 18% of our data), and benzene is another ~17%. How should a scaffold split handle a few huge groups like these, and what goes wrong if one lands in the test set?
 
 TODO:
+
+### Our scaffold split shuffles the small scaffold groups with a seed, but always puts the big groups in train. What does "mean ± std over seeds" measure when the split changes with the seed, versus when only the model's random init changes?
+
+TODO:
