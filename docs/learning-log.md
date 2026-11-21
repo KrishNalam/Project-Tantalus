@@ -73,3 +73,11 @@ TODO:
 ### What do the "NC" and "ND" terms in a CC-BY-NC-ND licence allow and forbid, and what do they mean for publishing a merged dataset or trained model?
 
 TODO:
+
+### ChemTastesDB already ships a "canonical SMILES" column. Why re-canonicalize it with RDKit before dedup or merging?
+
+TODO:
+
+### Why can't we simply strip counter-ions (keep the largest fragment) for every molecule, when some labels are "salty" or "umami"?
+
+TODO:

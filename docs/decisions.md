@@ -72,3 +72,20 @@ non-commercial portfolio project, but we must not redistribute the raw or merged
 **Rejected:** fetching all six 2019 CSVs (unused); a browser-spoofing User-Agent (a plain
 client name is enough and more honest); dropping the checksum for this host (it caught the
 error page, which proves the check is useful).
+
+### 2026-11-21 — Loaders return (kept, dropped); ChemTastesDB SMILES are re-canonicalized with RDKit
+
+**Decision:** `data.load_chemtastesdb` reads the xlsx as strings, renames columns to
+snake_case, keeps the file's "canonical SMILES" column as `source_smiles`, and adds an RDKit
+`canonical_smiles` column. It returns `(kept, dropped)`. `dropped` holds every removed row
+plus a `drop_reason` (currently "no SMILES" for 3 footnote rows, and "SMILES not parsable
+by RDKit" for 0 rows). The loader does no dedup, salt stripping, or label mapping.
+**Why:** A "canonical" SMILES is only canonical within one toolkit. ChemTastesDB's column
+comes from Marvin, and 3562 of 4075 strings change under RDKit. Merging on mixed toolkits'
+strings would miss duplicates across sources, and missed duplicates are a leakage risk.
+Returning dropped rows as data, rather than just a count or log line, makes "document
+every drop" checkable and lets the Phase 1 report tabulate drops by source and reason.
+`dtype=str` stops pandas turning IDs like `0001` and CAS numbers into numbers.
+**Rejected:** trusting the source's canonical SMILES (cross-toolkit mismatch); silently
+filtering bad rows (drops become invisible); doing dedup and label mapping inside the
+loader (each needs its own decision: salts and conflicting labels, see DEVLOG 2026-11-21).
