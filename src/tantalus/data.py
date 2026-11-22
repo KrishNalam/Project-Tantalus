@@ -298,6 +298,48 @@ def class_balance(
     return pd.DataFrame(rows)
 
 
+def split_coverage(
+    smiles: Sequence[str],
+    labels: pd.DataFrame,
+    seeds: Sequence[int] = (0, 1, 2, 3, 4),
+    frac: tuple[float, float, float] = (0.8, 0.1, 0.1),
+) -> pd.DataFrame:
+    """Report positives per (seed, split, label) across several scaffold splits.
+
+    :func:`class_balance` checks one split. Reported results are mean +/- std
+    over seeds, and each seed gives a different scaffold split, so a label is
+    only evaluable if val *and* test have positives for *every* seed. This
+    runs :func:`scaffold_split` once per seed and stacks the class-balance
+    tables, so ``min(n_positive)`` per (split, label) shows which labels
+    would get an undefined ROC-AUC for some seed.
+
+    Args:
+        smiles: SMILES strings, one per row of ``labels`` (same order).
+        labels: Multi-hot table, one 0/1 column per label.
+        seeds: Split seeds to try.
+        frac: Target (train, val, test) fractions, passed to
+            :func:`scaffold_split`.
+
+    Returns:
+        The :func:`class_balance` columns plus a leading ``seed`` column,
+        one row per (seed, split, label).
+
+    Raises:
+        ValueError: If ``smiles`` and ``labels`` have different lengths, or
+            for any reason :func:`scaffold_split` or :func:`class_balance`
+            raises.
+    """
+    if len(smiles) != len(labels):
+        raise ValueError(f"{len(smiles)} SMILES but {len(labels)} label rows")
+    tables = []
+    for seed in seeds:
+        train, val, test = scaffold_split(smiles, frac=frac, seed=seed)
+        table = class_balance(labels, {"train": train, "val": val, "test": test})
+        tables.append(table.assign(seed=seed))
+    report = pd.concat(tables, ignore_index=True)
+    return report[["seed", *report.columns.drop("seed")]]
+
+
 def label_conflicts(
     df: pd.DataFrame,
     label_col: str,

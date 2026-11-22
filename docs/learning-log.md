@@ -113,3 +113,7 @@ TODO:
 ### ChemTastesDB puts 179 molecules in a "Multitaste" class, but its free-text column says which tastes they have (e.g. "Bitter; Umami"). In a multi-label setup, why is it better to expand these into several positive labels than to keep "Multitaste" as its own label? And what is the risk of building labels with keyword matching (e.g. "umami-enhancing" or "Non-sweet/Sweet")?
 
 TODO:
+
+### Each seed of our scaffold split gives a different test set. On provisional labels, umami has between 4 and 46 val positives depending on the seed. Why does a label with very few positives in a split give a noisy (high-variance) ROC-AUC / PR-AUC, and why do we need to check *every* seed, not just seed 0, before trusting the mean ± std?
+
+TODO:
