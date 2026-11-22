@@ -144,3 +144,27 @@ where they are logged.
 gives one split only, so seed variance just measures model noise, not split noise. A fully
 random group order would let one huge group land in val/test. Returning boolean masks or a
 split column would tie the function to a DataFrame; plain indices work for any sequence.
+
+### 2026-11-22 — Row-level label mapping to six multi-hot labels
+
+**Decision:** `data.assign_labels(df)` adds 0/1 columns `LABELS = [sweet, bitter, umami,
+sour, salty, tasteless]` to every loader row (before dedup) and returns `(labeled, dropped)`.
+BitterDB rows get `bitter = 1`. ChemTastesDB single-taste classes (Sweetness, Bitterness,
+Umaminess, Sourness, Saltiness, Tastelessness) get that one label. Non-sweetness and
+Non-bitterness get all zeros. Multitaste and Miscellaneous get the union of basic tastes
+named in their free text (`taste_mentions`), and rows that name none are dropped (43, all
+Miscellaneous). If tasteless co-occurs with a taste in one row, tasteless is set to 0.
+Unknown sources or classes raise `ValueError`. On ChemTastesDB + BitterDB: 5106 rows → 5063
+kept. Row-level positives: sweet 1472, bitter 2808, umami 293, sour 101, salty 48,
+tasteless 233. 332 rows are all-zero (the Non-sweet/Non-bitter negatives).
+**Why:** These are the owner's Phase 1 label rules (CLAUDE.md, 2026-11-22). One choice the
+rules left open was made here: single-taste classes use the curated class only and ignore
+cross-mentions in the free text (e.g. "bitter aftertaste" in a Sweetness row). The class is
+the database's curated judgement, and keyword matching is only trusted where the class
+carries no taste information. Labels are assigned per row, before dedup, so the later merge
+step only has to OR rows together. Raising on unknown categories means a new data release
+can't silently mislabel rows.
+**Rejected:** union of mentions for every row (about 50 extra sweet/bitter positives from
+keyword matching on free text that may describe aftertastes or mixtures); treating
+Non-sweet/Non-bitter as tasteless (they are negatives for one taste, not "no taste");
+keeping Multitaste as its own label (not a taste, and it hides the real tastes).

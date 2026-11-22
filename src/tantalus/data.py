@@ -31,6 +31,24 @@ _TASTE_WORDS = {
     "salty": ["salty"],
     "tasteless": ["tasteless", "neutral"],
 }
+# The six output labels, in the column order used everywhere downstream.
+LABELS = ["sweet", "bitter", "umami", "sour", "salty", "tasteless"]
+
+# ChemTastesDB classes that name exactly one label. "Non-sweetness" and
+# "Non-bitterness" map to no positive label (all zeros).
+_CLASS_TO_LABEL = {
+    "Sweetness": "sweet",
+    "Bitterness": "bitter",
+    "Umaminess": "umami",
+    "Sourness": "sour",
+    "Saltiness": "salty",
+    "Tastelessness": "tasteless",
+    "Non-sweetness": None,
+    "Non-bitterness": None,
+}
+# Catch-all classes whose labels are read from the free-text "taste" column.
+_FREE_TEXT_CLASSES = {"Multitaste", "Miscellaneous"}
+
 # Explicit negations, kept separately because ChemTastesDB has whole classes of
 # them (Non-sweetness, Non-bitterness).
 _NEGATED_WORDS = {"non_sweet": "sweet", "non_bitter": "bitter"}
@@ -475,3 +493,64 @@ def taste_mentions(df: pd.DataFrame, taste_col: str = "taste") -> pd.DataFrame:
         {name: text.str.contains(pat) for name, pat in patterns.items()},
         index=df.index,
     )
+
+
+def assign_labels(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Add one 0/1 column per label in :data:`LABELS` to each row (no dedup yet).
+
+    The rules (owner decisions, see ``docs/decisions.md``):
+
+    - BitterDB rows: ``bitter = 1``, everything else 0.
+    - ChemTastesDB single-taste classes (Sweetness, Bitterness, ...): that one
+      label. The curated class wins over the free text here.
+    - Non-sweetness / Non-bitterness: all zeros. They are known negatives for
+      one taste, not "tasteless".
+    - Multitaste / Miscellaneous: the union of basic tastes named in the
+      free-text ``taste`` column (:func:`taste_mentions`). Rows that name no
+      basic taste (e.g. only "astringent") are dropped.
+    - If ``tasteless`` co-occurs with any taste in a row, ``tasteless`` is
+      set to 0 (a tasteless molecule can't also be bitter).
+
+    Args:
+        df: Rows from :func:`load_chemtastesdb` and/or :func:`load_bitterdb`
+            (stacked with ``pd.concat``). Needs ``source``; ChemTastesDB rows
+            also need ``class_taste`` and ``taste``.
+
+    Returns:
+        ``(labeled, dropped)``. ``labeled`` is ``df`` plus the label columns
+        (int 0/1). ``dropped`` has the removed rows plus a ``drop_reason``.
+
+    Raises:
+        ValueError: On an unknown source or ChemTastesDB class, so a new
+            category in a future data release can't be silently mislabeled.
+    """
+    # A fresh index, so rows stacked without ignore_index can't collide.
+    df = df.reset_index(drop=True)
+    unknown_sources = set(df["source"]) - {"chemtastesdb", "bitterdb"}
+    if unknown_sources:
+        raise ValueError(f"unknown sources: {sorted(unknown_sources)}")
+    is_ctdb = df["source"] == "chemtastesdb"
+    classes = df.loc[is_ctdb, "class_taste"]
+    unknown = set(classes) - set(_CLASS_TO_LABEL) - _FREE_TEXT_CLASSES
+    if unknown:
+        raise ValueError(f"unknown ChemTastesDB classes: {sorted(unknown, key=str)}")
+
+    labels = pd.DataFrame(0, index=df.index, columns=LABELS)
+    labels.loc[df["source"] == "bitterdb", "bitter"] = 1
+    for cls, label in _CLASS_TO_LABEL.items():
+        if label is not None:
+            labels.loc[is_ctdb & (df["class_taste"] == cls), label] = 1
+
+    free_text = is_ctdb & df["class_taste"].isin(_FREE_TEXT_CLASSES)
+    mentions = taste_mentions(df[free_text])[LABELS].astype(int)
+    labels.loc[free_text, LABELS] = mentions
+
+    has_taste = labels[LABELS[:-1]].any(axis=1)
+    labels.loc[has_taste, "tasteless"] = 0
+
+    labeled = pd.concat([df, labels], axis=1)
+    no_taste = free_text & ~labels.any(axis=1)
+    labeled, dropped = _split_drops(
+        labeled, no_taste, "Multitaste/Miscellaneous naming no basic taste"
+    )
+    return labeled.reset_index(drop=True), dropped.reset_index(drop=True)

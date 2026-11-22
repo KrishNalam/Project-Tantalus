@@ -117,3 +117,7 @@ TODO:
 ### Each seed of our scaffold split gives a different test set. On provisional labels, umami has between 4 and 46 val positives depending on the seed. Why does a label with very few positives in a split give a noisy (high-variance) ROC-AUC / PR-AUC, and why do we need to check *every* seed, not just seed 0, before trusting the mean ± std?
 
 TODO:
+
+### ChemTastesDB has 304 "Non-sweetness" molecules. We label them all-zero (not sweet, but also not bitter, umami, etc.). Is "not sweet" the same as "a negative for every taste"? What would label masking in the loss (ignoring unknown labels instead of treating them as 0) change, and why might we want it later?
+
+TODO:
