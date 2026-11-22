@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pandas as pd
+from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
 
 from tantalus.featurize import _parse, canonicalize
@@ -303,3 +304,74 @@ def label_conflicts(
     )
     conflicts = grouped[grouped["n_labels"] > 1]
     return conflicts.sort_index().reset_index()
+
+
+def salt_report(
+    df: pd.DataFrame,
+    label_col: str,
+    key: str = "canonical_smiles",
+) -> pd.DataFrame:
+    """List multi-fragment molecules (salts, mixtures) as evidence for a salt rule.
+
+    This only *reports*; it doesn't strip anything. For each row whose SMILES
+    has more than one ``.``-separated fragment, it names the "parent" (the
+    fragment with the most heavy atoms, which largest-fragment stripping
+    would keep) and the fragments that stripping would throw away. The
+    ``parent_listed`` flag shows whether the parent also appears as its own
+    row: those pairs are near-duplicates that could land on opposite sides of
+    a split if left as two molecules (a leakage risk).
+
+    Args:
+        df: Rows from one or more loaders. Needs ``key``, ``label_col`` and
+            ``source`` columns.
+        label_col: Column with the raw label, e.g. ``"class_taste"``, so the
+            report can show which labels (salty, umami) depend on the ion.
+        key: Column holding the canonical SMILES. Defaults to
+            ``"canonical_smiles"``.
+
+    Returns:
+        One row per multi-fragment input row, sorted by ``key``, with the
+        columns ``<key>``, ``n_fragments``, ``parent_smiles``,
+        ``other_fragments`` (sorted, joined with ``" | "``), ``parent_listed``,
+        ``<label_col>`` and ``source``. Empty if nothing is multi-fragment.
+        Rows whose SMILES can't be parsed are skipped.
+    """
+    known = set(df[key].dropna())
+    records = []
+    for smiles, label, source in zip(df[key], df[label_col], df["source"]):
+        mol = _parse(smiles)
+        if mol is None:
+            continue
+        frags = Chem.GetMolFrags(mol, asMols=True)
+        if len(frags) < 2:
+            continue
+        frag_smiles = [Chem.MolToSmiles(f) for f in frags]
+        # Most heavy atoms wins; ties broken by SMILES so the choice is stable.
+        parent_idx = max(
+            range(len(frags)),
+            key=lambda i: (frags[i].GetNumHeavyAtoms(), frag_smiles[i]),
+        )
+        parent = frag_smiles[parent_idx]
+        others = sorted(s for i, s in enumerate(frag_smiles) if i != parent_idx)
+        records.append(
+            {
+                key: smiles,
+                "n_fragments": len(frags),
+                "parent_smiles": parent,
+                "other_fragments": " | ".join(others),
+                "parent_listed": parent in known,
+                label_col: label,
+                "source": source,
+            }
+        )
+    columns = [
+        key,
+        "n_fragments",
+        "parent_smiles",
+        "other_fragments",
+        "parent_listed",
+        label_col,
+        "source",
+    ]
+    report = pd.DataFrame(records, columns=columns)
+    return report.sort_values(key, kind="stable").reset_index(drop=True)

@@ -105,3 +105,7 @@ TODO:
 ### When the same molecule appears twice with labels "Bitterness" and "Multitaste", is that a label conflict or two compatible labels? How does the answer change between a single-label (softmax) and a multi-label (sigmoid per label) setup?
 
 TODO:
+
+### A salt like sodium acetate is written `CC(=O)[O-].[Na+]`. If we strip the `[Na+]`, the parent is the charged acetate `CC(=O)[O-]`, which doesn't match neutral acetic acid `CC(=O)O` in the dataset. What does "neutralizing" a molecule mean, and why does leaving parents charged hide near-duplicates from dedup?
+
+TODO:
