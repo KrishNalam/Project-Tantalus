@@ -215,3 +215,54 @@ def scaffold_split(
         else:
             test.extend(group)
     return sorted(train), sorted(val), sorted(test)
+
+
+def class_balance(
+    labels: pd.DataFrame, splits: dict[str, Sequence[int]]
+) -> pd.DataFrame:
+    """Count positives per label in each split (the Phase 1 class-balance report).
+
+    Works on any multi-hot label table, so it doesn't depend on how the raw
+    taste strings are mapped to labels. A label with 0 positives in a split
+    is worth catching early: ROC-AUC and PR-AUC are undefined for it there.
+
+    Args:
+        labels: One row per molecule, one 0/1 column per label (e.g. "sweet").
+            Rows are addressed by position, matching :func:`scaffold_split`.
+        splits: Split name -> positional row indices, e.g.
+            ``{"train": train_idx, "val": val_idx, "test": test_idx}``.
+
+    Returns:
+        A long table with one row per (split, label) and the columns
+        ``split``, ``label``, ``n_molecules``, ``n_positive``, ``frac_positive``.
+
+    Raises:
+        ValueError: If a label column isn't 0/1, or a row appears in more than
+            one split (that would leak the same molecule into train and test).
+    """
+    values = labels.to_numpy()
+    if not ((values == 0) | (values == 1)).all():
+        raise ValueError("labels must be multi-hot (only 0/1 values)")
+
+    seen: set[int] = set()
+    for name, idx in splits.items():
+        overlap = seen.intersection(idx)
+        if overlap:
+            raise ValueError(f"{len(overlap)} rows of {name!r} are in another split")
+        seen.update(idx)
+
+    rows = []
+    for name, idx in splits.items():
+        part = labels.iloc[list(idx)]
+        for label in labels.columns:
+            n_pos = int(part[label].sum())
+            rows.append(
+                {
+                    "split": name,
+                    "label": label,
+                    "n_molecules": len(part),
+                    "n_positive": n_pos,
+                    "frac_positive": n_pos / len(part) if len(part) else float("nan"),
+                }
+            )
+    return pd.DataFrame(rows)

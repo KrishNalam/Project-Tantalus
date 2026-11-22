@@ -20,7 +20,7 @@ canonicalization, atom features, fingerprints, and Tanimoto similarity.
 - [ ] Canonicalize, dedup across sources, resolve label conflicts, drop invalids (documented)
 - [ ] Merge into one table: canonical SMILES + multi-hot labels
 - [x] Bemis–Murcko scaffold split implemented (`data.murcko_scaffold` + `data.scaffold_split`; still to be run on the merged table)
-- [ ] Class balance per split reported
+- [ ] Class balance per split reported (helper done: `data.class_balance`; still to be run on the merged table)
 
 Done when: a single processed table + scaffold split exists with every drop documented
 and class balance reported.
