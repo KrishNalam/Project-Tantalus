@@ -6,6 +6,7 @@ Every loader returns two tables: the rows it kept and the rows it dropped
 
 import math
 import random
+import re
 from collections import defaultdict
 from collections.abc import Sequence
 from pathlib import Path
@@ -19,6 +20,34 @@ from tantalus.featurize import _parse, canonicalize
 RAW_DIR = Path(__file__).resolve().parents[2] / "data" / "raw"
 CHEMTASTESDB_XLSX = RAW_DIR / "chemtastesdb" / "ChemTastesDB_database.xlsx"
 BITTERDB_CSV = RAW_DIR / "bitterdb" / "BitterCompoundsPropA_2019.csv"
+
+# Basic tastes we look for in ChemTastesDB's free-text "Taste" column, and the
+# words that count as each one. "neutral" means tasteless, "savory" means umami.
+_TASTE_WORDS = {
+    "sweet": ["sweet"],
+    "bitter": ["bitter"],
+    "umami": ["umami", "savory"],
+    "sour": ["sour"],
+    "salty": ["salty"],
+    "tasteless": ["tasteless", "neutral"],
+}
+# Explicit negations, kept separately because ChemTastesDB has whole classes of
+# them (Non-sweetness, Non-bitterness).
+_NEGATED_WORDS = {"non_sweet": "sweet", "non_bitter": "bitter"}
+
+
+def _word_pattern(words: list[str]) -> re.Pattern[str]:
+    """Match any of ``words`` as a whole word, not preceded by ``-`` (so ``non-sweet``
+    doesn't count as ``sweet``) and not followed by a letter (so ``umamiless``
+    doesn't count as ``umami``)."""
+    return re.compile(r"(?<![\w-])(?:" + "|".join(words) + r")(?!\w)", re.IGNORECASE)
+
+
+_TASTE_PATTERNS = {name: _word_pattern(w) for name, w in _TASTE_WORDS.items()}
+_NEGATED_PATTERNS = {
+    name: re.compile(r"(?<![\w-])no[nt]-" + word + r"(?!\w)", re.IGNORECASE)
+    for name, word in _NEGATED_WORDS.items()
+}
 
 # Original ChemTastesDB headers -> snake_case names used in this project.
 _CHEMTASTESDB_COLUMNS = {
@@ -375,3 +404,32 @@ def salt_report(
     ]
     report = pd.DataFrame(records, columns=columns)
     return report.sort_values(key, kind="stable").reset_index(drop=True)
+
+
+def taste_mentions(df: pd.DataFrame, taste_col: str = "taste") -> pd.DataFrame:
+    """Flag which basic tastes each row's free-text description mentions.
+
+    ChemTastesDB's ``class_taste`` lumps rows into catch-all classes
+    (Multitaste, Miscellaneous), but its free-text ``taste`` column says which
+    tastes were reported, e.g. ``"Bitter; Umami"``. This report reads that
+    text so the owner can decide the label mapping from evidence. It doesn't
+    *apply* a mapping: the flags are keyword matches, and words like
+    ``"umami-like"`` or ``"umami-enhancing"`` still count as ``umami``.
+
+    Args:
+        df: Rows with a free-text taste column (e.g. from
+            :func:`load_chemtastesdb`). Missing values give all-False rows.
+        taste_col: Name of that column. Defaults to ``"taste"``.
+
+    Returns:
+        A table with the same index as ``df`` and one boolean column per basic
+        taste (``sweet``, ``bitter``, ``umami``, ``sour``, ``salty``,
+        ``tasteless``) plus the explicit negations ``non_sweet`` and
+        ``non_bitter``. ``"non-sweet"`` sets ``non_sweet``, not ``sweet``.
+    """
+    text = df[taste_col].fillna("").astype(str)
+    patterns = _TASTE_PATTERNS | _NEGATED_PATTERNS
+    return pd.DataFrame(
+        {name: text.str.contains(pat) for name, pat in patterns.items()},
+        index=df.index,
+    )

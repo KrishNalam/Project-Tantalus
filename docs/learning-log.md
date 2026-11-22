@@ -109,3 +109,7 @@ TODO:
 ### A salt like sodium acetate is written `CC(=O)[O-].[Na+]`. If we strip the `[Na+]`, the parent is the charged acetate `CC(=O)[O-]`, which doesn't match neutral acetic acid `CC(=O)O` in the dataset. What does "neutralizing" a molecule mean, and why does leaving parents charged hide near-duplicates from dedup?
 
 TODO:
+
+### ChemTastesDB puts 179 molecules in a "Multitaste" class, but its free-text column says which tastes they have (e.g. "Bitter; Umami"). In a multi-label setup, why is it better to expand these into several positive labels than to keep "Multitaste" as its own label? And what is the risk of building labels with keyword matching (e.g. "umami-enhancing" or "Non-sweet/Sweet")?
+
+TODO:
