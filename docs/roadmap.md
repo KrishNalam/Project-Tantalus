@@ -17,7 +17,7 @@ canonicalization, atom features, fingerprints, and Tanimoto similarity.
 ## Phase 1 — Data Status: in progress
 
 - [ ] Load ChemTastesDB (primary), BitterDB, SweetenersDB (ChemTastesDB done: `data.load_chemtastesdb`; BitterDB done: `data.load_bitterdb`; SweetenersDB blocked, see Phase 0)
-- [ ] Canonicalize, dedup across sources, resolve label conflicts, drop invalids (documented)
+- [ ] Canonicalize, dedup across sources, resolve label conflicts, drop invalids (documented) (conflict report helper done: `data.label_conflicts`; resolution rule waits on owner)
 - [ ] Merge into one table: canonical SMILES + multi-hot labels
 - [x] Bemis–Murcko scaffold split implemented (`data.murcko_scaffold` + `data.scaffold_split`; still to be run on the merged table)
 - [ ] Class balance per split reported (helper done: `data.class_balance`; still to be run on the merged table)

@@ -101,3 +101,7 @@ TODO:
 ### All 16 salty molecules are acyclic, so the scaffold split always puts them in train and val/test have 0 salty positives. Why is ROC-AUC undefined for a label with no positives in the test set, and what are the options (drop the label, merge it, report it separately, change the split)?
 
 TODO:
+
+### When the same molecule appears twice with labels "Bitterness" and "Multitaste", is that a label conflict or two compatible labels? How does the answer change between a single-label (softmax) and a multi-label (sigmoid per label) setup?
+
+TODO:

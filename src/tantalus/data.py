@@ -266,3 +266,40 @@ def class_balance(
                 }
             )
     return pd.DataFrame(rows)
+
+
+def label_conflicts(
+    df: pd.DataFrame,
+    label_col: str,
+    key: str = "canonical_smiles",
+) -> pd.DataFrame:
+    """List molecules whose duplicate rows disagree on a label (a dedup report).
+
+    This only *finds* conflicts; it doesn't resolve them. How to resolve them
+    (drop, majority vote, prefer a source, union into multi-hot) is a separate
+    decision, and this report is the evidence for it. It works within one
+    source or across several stacked with ``pd.concat``, because it groups by
+    the RDKit canonical SMILES that every loader adds.
+
+    Args:
+        df: Rows from one or more loaders. Needs ``key``, ``label_col`` and
+            ``source`` columns.
+        label_col: Column with the raw label to compare, e.g. ``"class_taste"``.
+            Missing values are ignored.
+        key: Column that identifies a molecule. Defaults to the canonical SMILES.
+
+    Returns:
+        One row per conflicting molecule, sorted by ``key``, with the columns
+        ``<key>``, ``n_rows`` (rows with a non-missing label), ``n_labels``,
+        ``labels`` and ``sources`` (the last two are sorted and joined with
+        ``" | "``). Empty if nothing conflicts.
+    """
+    rows = df.dropna(subset=[label_col])
+    grouped = rows.groupby(key).agg(
+        n_rows=(label_col, "size"),
+        n_labels=(label_col, "nunique"),
+        labels=(label_col, lambda s: " | ".join(sorted(s.unique()))),
+        sources=("source", lambda s: " | ".join(sorted(s.unique()))),
+    )
+    conflicts = grouped[grouped["n_labels"] > 1]
+    return conflicts.sort_index().reset_index()
