@@ -1,14 +1,17 @@
-"""Train the Random Forest baseline on every saved scaffold split.
+"""Train a fingerprint baseline on every saved scaffold split.
 
 Usage:
-    uv run python scripts/build_data.py         # once, writes the splits
-    uv run python scripts/run_random_forest.py
+    uv run python scripts/build_data.py                    # once, writes the splits
+    uv run python scripts/run_baseline.py random_forest
+    uv run python scripts/run_baseline.py xgboost
 
 For each split seed, fits on ``train`` only and writes val + test
-probabilities to ``data/processed/predictions/random_forest.csv`` (gitignored).
+probabilities to ``data/processed/predictions/<model>.csv`` (gitignored).
 Columns: canonical_smiles, seed, split, then ``<label>_true`` and
 ``<label>_prob`` for every label. Scoring is done by ``evaluate.py``.
 """
+
+import argparse
 
 import pandas as pd
 
@@ -17,20 +20,28 @@ from tantalus.models.baselines import (
     load_fingerprint_table,
     predict_proba,
     train_random_forest,
+    train_xgboost,
 )
+
+TRAINERS = {"random_forest": train_random_forest, "xgboost": train_xgboost}
 
 
 def main() -> None:
-    """Fit one forest per (seed, label) and save val/test predictions."""
+    """Fit one model per (seed, label) and save val/test predictions."""
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("model", choices=sorted(TRAINERS))
+    args = parser.parse_args()
+    train = TRAINERS[args.model]
+
     X, Y, splits = load_fingerprint_table()
     seed_columns = [c for c in splits.columns if c.startswith("seed_")]
     frames = []
     for column in seed_columns:
         seed = int(column.removeprefix("seed_"))
         split = splits[column].to_numpy()
-        train = split == "train"
-        models = train_random_forest(X[train], Y[train], seed=seed)
-        evaluated = split != "train"
+        is_train = split == "train"
+        models = train(X[is_train], Y[is_train], seed=seed)
+        evaluated = ~is_train
         probs = predict_proba(models, X[evaluated])
         frame = pd.DataFrame(
             {
@@ -43,11 +54,11 @@ def main() -> None:
             frame[f"{label}_true"] = Y[evaluated, j]
             frame[f"{label}_prob"] = probs[:, j]
         frames.append(frame)
-        print(f"seed {seed}: trained on {train.sum()}, predicted {evaluated.sum()}")
+        print(f"seed {seed}: trained on {is_train.sum()}, predicted {evaluated.sum()}")
 
     out_dir = PROCESSED_DIR / "predictions"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "random_forest.csv"
+    out_path = out_dir / f"{args.model}.csv"
     pd.concat(frames, ignore_index=True).to_csv(out_path, index=False)
     print(f"wrote {out_path}")
 

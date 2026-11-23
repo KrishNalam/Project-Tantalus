@@ -17,6 +17,7 @@ dependencies = [
     "scikit-learn>=1.9.1",
     "torch>=2.14.1",
     "torch-geometric>=2.8.0.post1",
+    "xgboost-cpu>=3.4.1",
 ]
 
 [project.scripts]

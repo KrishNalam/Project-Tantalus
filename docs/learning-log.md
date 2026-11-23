@@ -141,3 +141,11 @@ TODO:
 ### We train one forest per label ("binary relevance") instead of a single multi-output forest. What information about label co-occurrence (e.g. sweet + bitter) does binary relevance ignore, and why is that acceptable for a baseline?
 
 TODO:
+
+### XGBoost builds trees *sequentially* (boosting), each one fitting the errors of the ones before; a Random Forest builds independent trees on bootstrap samples and averages them (bagging). Which of the two mainly reduces variance and which mainly reduces bias? Why might boosting overfit a small, noisy label like umami more easily than a forest?
+
+TODO:
+
+### For XGBoost we set `scale_pos_weight = n_negative / n_positive` per label. What does that do to the gradient of the log-loss for positive examples, and why does it change the predicted probabilities (calibration) but much less the ROC-AUC ranking?
+
+TODO:

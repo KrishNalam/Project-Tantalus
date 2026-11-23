@@ -29,8 +29,8 @@ and class balance reported.
 
 ## Phase 2 — Baselines Status: in progress
 
-- [x] Morgan fingerprints → Random Forest (`models/baselines.py` + `scripts/run_random_forest.py`: one class-weighted forest per label, seeds 0–4, val/test probabilities → `data/processed/predictions/random_forest.csv`; scores pending the owner's `evaluate.py`)
-- [ ] Morgan fingerprints → XGBoost
+- [x] Morgan fingerprints → Random Forest (`models/baselines.py` + `scripts/run_baseline.py random_forest`: one class-weighted forest per label, seeds 0–4, val/test probabilities → `data/processed/predictions/random_forest.csv`; scores pending the owner's `evaluate.py`)
+- [x] Morgan fingerprints → XGBoost (`baselines.train_xgboost` + `scripts/run_baseline.py xgboost`: one `scale_pos_weight`-weighted model per label, default hyperparameters, seeds 0–4 → `data/processed/predictions/xgboost.csv`; CPU-only `xgboost-cpu` wheel)
 - [ ] Scaffold split, multiple seeds, per-label ROC-AUC / PR-AUC (mean ± std)
 
 Done when: baseline metrics are recorded on the scaffold split as the number the GNN must beat.

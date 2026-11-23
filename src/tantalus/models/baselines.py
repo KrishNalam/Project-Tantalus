@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 
 from tantalus.data import LABELS, PROCESSED_DIR
 from tantalus.featurize import smiles_to_fingerprint
@@ -76,14 +77,59 @@ def train_random_forest(
     return models
 
 
-def predict_proba(models: list[RandomForestClassifier], X: np.ndarray) -> np.ndarray:
+def train_xgboost(
+    X: np.ndarray, Y: np.ndarray, seed: int, n_estimators: int = 500
+) -> list[XGBClassifier | None]:
+    """Fit one class-weighted gradient-boosted tree model per label.
+
+    Class imbalance is handled with ``scale_pos_weight = n_negative / n_positive``,
+    which up-weights positives the same way ``class_weight="balanced"`` does
+    for the Random Forest. Other hyperparameters are XGBoost defaults (no
+    tuning, so val/test never influence fitting).
+
+    Args:
+        X: Training fingerprints, shape ``(n, n_bits)``.
+        Y: Training labels, shape ``(n, n_labels)``, 0/1.
+        seed: Random state for XGBoost.
+        n_estimators: Boosting rounds.
+
+    Returns:
+        One fitted classifier per label column, in ``LABELS`` order. A label
+        with only one class in ``Y`` gets ``None`` (XGBoost can't fit it);
+        ``predict_proba`` turns that into a constant prediction.
+    """
+    models: list[XGBClassifier | None] = []
+    for j in range(Y.shape[1]):
+        n_pos = int(Y[:, j].sum())
+        n_neg = len(Y) - n_pos
+        if n_pos == 0 or n_neg == 0:
+            models.append(None)
+            continue
+        model = XGBClassifier(
+            n_estimators=n_estimators,
+            scale_pos_weight=n_neg / n_pos,
+            tree_method="hist",
+            n_jobs=-1,
+            random_state=seed,
+        )
+        model.fit(X, Y[:, j])
+        models.append(model)
+    return models
+
+
+def predict_proba(
+    models: list[RandomForestClassifier | XGBClassifier | None], X: np.ndarray
+) -> np.ndarray:
     """Return positive-class probabilities, shape ``(n, len(models))``.
 
-    A forest trained on a label with only one class seen gives a single
-    probability column; that label gets a constant 0 or 1 prediction.
+    A forest trained on a label with only one class seen gives a constant
+    0 or 1 prediction; a ``None`` model (from ``train_xgboost``) gives 0.
     """
     columns = []
     for model in models:
+        if model is None:
+            columns.append(np.zeros(len(X)))
+            continue
         proba = model.predict_proba(X)
         if 1 in model.classes_:
             columns.append(proba[:, list(model.classes_).index(1)])

@@ -257,3 +257,27 @@ labels, and per-label class weighting is less transparent); tuning hyperparamete
 it on val only, after a first score exists); computing ROC-AUC inside the script (metrics
 are the owner's `evaluate.py`).
 **Runtime:** ~2 min for 5 seeds × 6 labels on a laptop CPU.
+
+### 2026-11-23 — XGBoost baseline: per-label `scale_pos_weight`, CPU-only wheel, shared runner script
+
+**Decision:** `baselines.train_xgboost` fits one `XGBClassifier(n_estimators=500,
+tree_method="hist")` per label on `train` rows only, with
+`scale_pos_weight = n_negative / n_positive` computed per label and otherwise default
+hyperparameters (`random_state` = split seed). A label with a single class in train gets
+`None` and a constant-0 prediction (never happens on the current splits; salty has ≥ 44
+train positives). The dependency is `xgboost-cpu`, not `xgboost`. The runner
+`scripts/run_random_forest.py` was renamed to `scripts/run_baseline.py <model>` and writes
+`data/processed/predictions/<model>.csv` in the same format as the RF file.
+**Why:** `scale_pos_weight` is XGBoost's built-in way to up-weight positives; with
+n_neg/n_pos it gives positives and negatives equal total weight, the same balance as the
+RF's `class_weight="balanced"` and the class-weighted BCE planned for the GNN, so the
+baselines differ in model family, not in how imbalance is handled. Default hyperparameters
+keep val/test out of fitting (no tuning leakage). The plain `xgboost` wheel pulled in
+`nvidia-nccl-cu13` (a CUDA library); the project is CPU-only, and `xgboost-cpu` is the same
+library without GPU dependencies. One runner script for both models removes a duplicated
+training loop and guarantees both prediction files have the same columns.
+**Rejected:** `sample_weight` per row (equivalent here, more code); a native multi-label
+XGBoost model (shares trees across labels, same objection as the multi-output forest);
+early stopping on val (that would be tuning; do it later, on val only, for all models
+alike); a separate `run_xgboost.py` (copy of the RF loop).
+**Runtime:** ~1m45s for 5 seeds × 6 labels on a 4-core laptop CPU.
