@@ -1,12 +1,15 @@
-"""Train a fingerprint baseline on every saved scaffold split.
+"""Train a fingerprint baseline on every saved split.
 
 Usage:
     uv run python scripts/build_data.py                    # once, writes the splits
     uv run python scripts/run_baseline.py random_forest
     uv run python scripts/run_baseline.py xgboost
+    uv run python scripts/run_baseline.py xgboost --split random
 
 For each split seed, fits on ``train`` only and writes val + test
-probabilities to ``data/processed/predictions/<model>.csv`` (gitignored).
+probabilities to ``data/processed/predictions/<model>.csv`` (scaffold split,
+the reported results) or ``<model>_random.csv`` (random split, a deliberate
+comparison and the only place salty/sour are scored), all gitignored.
 Columns: canonical_smiles, seed, split, then ``<label>_true`` and
 ``<label>_prob`` for every label. Scoring is done by ``evaluate.py``.
 """
@@ -15,7 +18,7 @@ import argparse
 
 import pandas as pd
 
-from tantalus.data import LABELS, PROCESSED_DIR
+from tantalus.data import LABELS, PROCESSED_DIR, SPLIT_FILES
 from tantalus.models.baselines import (
     load_fingerprint_table,
     predict_proba,
@@ -30,10 +33,12 @@ def main() -> None:
     """Fit one model per (seed, label) and save val/test predictions."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("model", choices=sorted(TRAINERS))
+    parser.add_argument("--split", choices=sorted(SPLIT_FILES), default="scaffold")
     args = parser.parse_args()
     train = TRAINERS[args.model]
 
-    X, Y, splits = load_fingerprint_table()
+    splits_file, _ = SPLIT_FILES[args.split]
+    X, Y, splits = load_fingerprint_table(splits_file=splits_file)
     seed_columns = [c for c in splits.columns if c.startswith("seed_")]
     frames = []
     for column in seed_columns:
@@ -58,7 +63,8 @@ def main() -> None:
 
     out_dir = PROCESSED_DIR / "predictions"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{args.model}.csv"
+    suffix = "" if args.split == "scaffold" else f"_{args.split}"
+    out_path = out_dir / f"{args.model}{suffix}.csv"
     pd.concat(frames, ignore_index=True).to_csv(out_path, index=False)
     print(f"wrote {out_path}")
 

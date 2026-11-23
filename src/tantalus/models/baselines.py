@@ -17,24 +17,27 @@ from tantalus.featurize import smiles_to_fingerprint
 
 def load_fingerprint_table(
     processed_dir: Path = PROCESSED_DIR,
+    splits_file: str = "splits.csv",
 ) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
     """Load the merged molecules, their fingerprints, and the saved splits.
 
     Args:
-        processed_dir: Folder holding ``molecules.csv`` and ``splits.csv``
+        processed_dir: Folder holding ``molecules.csv`` and the split file
             (written by ``scripts/build_data.py``).
+        splits_file: ``splits.csv`` (scaffold, the default) or
+            ``random_splits.csv`` (the deliberate random-split comparison).
 
     Returns:
         ``(X, Y, splits)``: ``X`` is an ``(n, 2048)`` uint8 Morgan fingerprint
         matrix, ``Y`` an ``(n, len(LABELS))`` 0/1 label matrix, and ``splits``
-        the ``splits.csv`` table aligned row-for-row with ``X`` and ``Y``.
+        the split table aligned row-for-row with ``X`` and ``Y``.
 
     Raises:
         ValueError: If a molecule has no split row or no fingerprint
             (both would mean the processed files are out of sync).
     """
     molecules = pd.read_csv(processed_dir / "molecules.csv")
-    splits = pd.read_csv(processed_dir / "splits.csv")
+    splits = pd.read_csv(processed_dir / splits_file)
     # Align on the SMILES key, not on row order (see ADR 2026-11-23).
     splits = molecules[["canonical_smiles"]].merge(
         splits, on="canonical_smiles", how="left", validate="one_to_one"

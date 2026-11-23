@@ -31,7 +31,7 @@ tracked in [`docs/roadmap.md`](docs/roadmap.md).
 |---|---|---|
 | 0 | Setup, featurization, exploration notebook | mostly done |
 | 1 | Data loading, cleaning, merging, scaffold split | done (3728 molecules, scaffold splits for 5 seeds, class balance reported) |
-| 2 | Fingerprint baselines | in progress (Random Forest and XGBoost trained on 5 scaffold splits; scoring next) |
+| 2 | Fingerprint baselines | in progress (Random Forest and XGBoost trained on 5 scaffold splits, plus a random split for comparison; scoring next) |
 | 3 | GNNs | not started |
 | 4 | Explainability | not started |
 | 5 | Demo and write-up | not started |
@@ -47,6 +47,7 @@ uv run python scripts/download_data.py   # fetches pinned, checksum-verified dat
 uv run python scripts/build_data.py      # cleaned table + scaffold splits into data/processed/
 uv run python scripts/run_baseline.py random_forest  # -> data/processed/predictions/
 uv run python scripts/run_baseline.py xgboost
+uv run python scripts/run_baseline.py xgboost --split random  # deliberate comparison only
 uv run jupyter lab                       # notebooks/00_explore.ipynb
 ```
 
@@ -61,10 +62,10 @@ uv run pytest
 
 ```
 scripts/download_data.py   pinned dataset downloads (ChemTastesDB, BitterDB)
-scripts/build_data.py      Phase 1 pipeline: merged table, scaffold splits, class balance
+scripts/build_data.py      Phase 1 pipeline: merged table, scaffold (+ comparison random) splits, class balance
 scripts/run_baseline.py    Phase 2: RF / XGBoost baselines, val/test predictions per seed
 src/tantalus/featurize.py  SMILES -> canonical SMILES, PyG graphs, Morgan fingerprints
-src/tantalus/data.py       loaders, scaffold split, class-balance and data-quality reports
+src/tantalus/data.py       loaders, scaffold/random splits, class-balance and data-quality reports
 src/tantalus/models/       baselines (baselines.py: Morgan -> Random Forest / XGBoost) and GNNs
 notebooks/                 exploration, numbered by phase
 docs/                      roadmap, design decisions (ADRs), learning log

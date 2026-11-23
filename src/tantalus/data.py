@@ -266,6 +266,41 @@ def scaffold_split(
     return sorted(train), sorted(val), sorted(test)
 
 
+def random_split(
+    n: int,
+    frac: tuple[float, float, float] = (0.8, 0.1, 0.1),
+    seed: int = 0,
+) -> tuple[list[int], list[int], list[int]]:
+    """Split ``n`` rows into train/val/test uniformly at random.
+
+    Only for the deliberate random-vs-scaffold comparison (and for reporting
+    salty/sour, which are too sparse for the scaffold split). Reported
+    headline results always use :func:`scaffold_split`. Rows must already be
+    deduplicated, otherwise the same molecule can land in train and test.
+
+    Args:
+        n: Number of rows.
+        frac: Target (train, val, test) fractions. Must sum to 1.
+        seed: Seed for the shuffle.
+
+    Returns:
+        ``(train_idx, val_idx, test_idx)``: sorted positional indices.
+
+    Raises:
+        ValueError: If ``frac`` doesn't sum to 1.
+    """
+    if not math.isclose(sum(frac), 1.0):
+        raise ValueError(f"frac must sum to 1, got {frac}")
+    order = list(range(n))
+    random.Random(seed).shuffle(order)
+    n_train = round(frac[0] * n)
+    n_val = round(frac[1] * n)
+    train = order[:n_train]
+    val = order[n_train : n_train + n_val]
+    test = order[n_train + n_val :]
+    return sorted(train), sorted(val), sorted(test)
+
+
 def class_balance(
     labels: pd.DataFrame, splits: dict[str, Sequence[int]]
 ) -> pd.DataFrame:
@@ -711,22 +746,30 @@ def build_dataset(out_dir: Path = PROCESSED_DIR) -> pd.DataFrame:
 
 SPLIT_SEEDS = (0, 1, 2, 3, 4)
 
+# Split method -> (assignment file, class-balance file) in data/processed/.
+SPLIT_FILES = {
+    "scaffold": ("splits.csv", "split_balance.csv"),
+    "random": ("random_splits.csv", "random_split_balance.csv"),
+}
+
 
 def write_splits(
     molecules: pd.DataFrame,
     out_dir: Path = PROCESSED_DIR,
     seeds: Sequence[int] = SPLIT_SEEDS,
     frac: tuple[float, float, float] = (0.8, 0.1, 0.1),
+    method: str = "scaffold",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Save the scaffold split for every seed, plus its class balance.
+    """Save the split for every seed, plus its class balance.
 
-    Saving the assignment (rather than re-running :func:`scaffold_split`
-    later) means the baselines and the GNNs read the *same* train/val/test
-    molecules from disk, so their numbers are a fair head-to-head comparison.
+    Saving the assignment (rather than re-running the split later) means the
+    baselines and the GNNs read the *same* train/val/test molecules from
+    disk, so their numbers are a fair head-to-head comparison.
 
-    Writes ``splits.csv`` (``canonical_smiles`` plus one ``seed_<k>`` column
-    holding ``"train"``, ``"val"`` or ``"test"``) and ``split_balance.csv``
-    (the :func:`split_coverage` table) to ``out_dir``.
+    Writes the two files named in :data:`SPLIT_FILES` for ``method`` to
+    ``out_dir``: the assignment (``canonical_smiles`` plus one ``seed_<k>``
+    column holding ``"train"``, ``"val"`` or ``"test"``) and its class balance
+    (the :func:`split_coverage` columns: one row per (seed, split, label)).
 
     Args:
         molecules: The merged table from :func:`build_dataset`
@@ -734,21 +777,37 @@ def write_splits(
         out_dir: Output folder (created if missing).
         seeds: Split seeds; reported metrics are mean +/- std over these.
         frac: Target (train, val, test) fractions.
+        method: ``"scaffold"`` (:func:`scaffold_split`, used for reported
+            results) or ``"random"`` (:func:`random_split`, the deliberate
+            comparison).
 
     Returns:
         ``(splits, balance)``, the two tables written to disk.
+
+    Raises:
+        ValueError: If ``method`` is unknown.
     """
+    if method not in SPLIT_FILES:
+        raise ValueError(f"unknown split method {method!r}; use {list(SPLIT_FILES)}")
     smiles = molecules["canonical_smiles"].tolist()
     splits = molecules[["canonical_smiles"]].copy()
+    tables = []
     for seed in seeds:
-        train, val, test = scaffold_split(smiles, frac=frac, seed=seed)
+        if method == "scaffold":
+            train, val, test = scaffold_split(smiles, frac=frac, seed=seed)
+        else:
+            train, val, test = random_split(len(smiles), frac=frac, seed=seed)
+        parts = {"train": train, "val": val, "test": test}
         column = pd.Series("", index=range(len(smiles)))
-        for name, idx in (("train", train), ("val", val), ("test", test)):
+        for name, idx in parts.items():
             column.iloc[idx] = name
         splits[f"seed_{seed}"] = column.to_numpy()
-    balance = split_coverage(smiles, molecules[LABELS], seeds=seeds, frac=frac)
+        tables.append(class_balance(molecules[LABELS], parts).assign(seed=seed))
+    balance = pd.concat(tables, ignore_index=True)
+    balance = balance[["seed", *balance.columns.drop("seed")]]
 
+    splits_name, balance_name = SPLIT_FILES[method]
     out_dir.mkdir(parents=True, exist_ok=True)
-    splits.to_csv(out_dir / "splits.csv", index=False)
-    balance.to_csv(out_dir / "split_balance.csv", index=False)
+    splits.to_csv(out_dir / splits_name, index=False)
+    balance.to_csv(out_dir / balance_name, index=False)
     return splits, balance

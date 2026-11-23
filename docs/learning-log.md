@@ -149,3 +149,11 @@ TODO:
 ### For XGBoost we set `scale_pos_weight = n_negative / n_positive` per label. What does that do to the gradient of the log-loss for positive examples, and why does it change the predicted probabilities (calibration) but much less the ROC-AUC ranking?
 
 TODO:
+
+### On the random split, models usually score higher than on the scaffold split, even on the same molecules and labels. Why? What does that gap tell you about how a model will do on a new chemical series, and why do we still never headline the random-split number?
+
+TODO:
+
+### Salty has only 1 positive in the random-split test set for some seeds. What values can ROC-AUC take with exactly one positive, and why is a per-seed AUC like that almost useless? What would you report instead?
+
+TODO:

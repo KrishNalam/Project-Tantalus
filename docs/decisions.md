@@ -281,3 +281,34 @@ XGBoost model (shares trees across labels, same objection as the multi-output fo
 early stopping on val (that would be tuning; do it later, on val only, for all models
 alike); a separate `run_xgboost.py` (copy of the RF loop).
 **Runtime:** ~1m45s for 5 seeds × 6 labels on a 4-core laptop CPU.
+
+### 2026-11-23 — Random split saved alongside the scaffold split (deliberate comparison only)
+
+**Decision:** `data.random_split` shuffles row positions with `random.Random(seed)` and cuts
+them 80/10/10. `data.write_splits(..., method="random")` saves it for seeds 0–4 to
+`data/processed/random_splits.csv` + `random_split_balance.csv`. These use the same format
+as the scaffold files, which are byte-identical to before. `scripts/build_data.py` writes
+both. `scripts/run_baseline.py <model> --split random` writes
+`predictions/<model>_random.csv`. The default is still the scaffold split.
+`write_splits` now computes the class balance from the assignments it just made instead of
+re-running `scaffold_split` through `split_coverage`.
+**Why:** The owner's Phase 1 rule says salty and sour are reported only on a random split,
+clearly flagged as a comparison, because the scaffold split leaves them with 0 val/test
+positives. A random split over the deduplicated table gives min val/test positives of
+salty 3/1 and sour 8/9 over seeds 0–4. It also gives the usual random-vs-scaffold gap, which
+shows how much the scaffold split's "new chemistry" test costs. Saving it to disk is the
+same choice as for the scaffold split: every model reads identical molecules. Separate
+files and a `_random` suffix on predictions mean a random-split number can't be mistaken
+for a headline number.
+**Leakage note:** a random split is safe from *exact* duplicates only because the
+dedup/merge runs first (one row per canonical SMILES). Close analogues still land on both
+sides. That's the optimism the comparison is meant to show, so its numbers must never be
+headlined.
+**Rejected:** stratified / iterative multi-label stratification (more code and a new
+dependency for a side comparison; would also make the random split less "plain random");
+an extra `split_type` column in `splits.csv` (mixes headline and comparison splits in one
+file and breaks the existing loaders); re-splitting inside the training scripts (same drift
+risk as for the scaffold split).
+**Caveat:** salty has only 1 test positive for seeds 2 and 4, so its random-split ROC-AUC is
+close to meaningless per seed. Report it with its std and the positive count, or pool
+val+test for salty.
