@@ -129,3 +129,7 @@ TODO:
 ### After dedup, 946 of BitterDB's ~1000 molecules also appear in ChemTastesDB. Why would two "independent" sources overlap this much, and why does that make dedup *before* the split essential rather than optional?
 
 TODO:
+
+### We save the split assignment to `splits.csv` keyed by canonical SMILES instead of re-running `scaffold_split` in every training script. What could go wrong if the baseline and the GNN each computed their own split, even with the same seed? And why key on SMILES rather than row indices?
+
+TODO:

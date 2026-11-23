@@ -24,13 +24,13 @@ several seeds. Accuracy is never the headline number.
 
 ## Status
 
-Phase 0 (featurization) is mostly done, and Phase 1 (data) is in progress. Live progress is
+Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) is next. Live progress is
 tracked in [`docs/roadmap.md`](docs/roadmap.md).
 
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Setup, featurization, exploration notebook | mostly done |
-| 1 | Data loading, cleaning, merging, scaffold split | in progress (merged table built: 3728 molecules; split + class balance next) |
+| 1 | Data loading, cleaning, merging, scaffold split | done (3728 molecules, scaffold splits for 5 seeds, class balance reported) |
 | 2 | Fingerprint baselines | not started |
 | 3 | GNNs | not started |
 | 4 | Explainability | not started |
@@ -44,6 +44,7 @@ PyTorch is installed from the CPU wheel index.
 ```bash
 uv sync
 uv run python scripts/download_data.py   # fetches pinned, checksum-verified datasets into data/raw/
+uv run python scripts/build_data.py      # cleaned table + scaffold splits into data/processed/
 uv run jupyter lab                       # notebooks/00_explore.ipynb
 ```
 
@@ -58,6 +59,7 @@ uv run pytest
 
 ```
 scripts/download_data.py   pinned dataset downloads (ChemTastesDB, BitterDB)
+scripts/build_data.py      Phase 1 pipeline: merged table, scaffold splits, class balance
 src/tantalus/featurize.py  SMILES -> canonical SMILES, PyG graphs, Morgan fingerprints
 src/tantalus/data.py       loaders, scaffold split, class-balance and data-quality reports
 src/tantalus/models/       baselines and GNNs

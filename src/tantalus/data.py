@@ -707,3 +707,48 @@ def build_dataset(out_dir: Path = PROCESSED_DIR) -> pd.DataFrame:
     salt_log.to_csv(out_dir / "salt_log.csv", index=False)
     merge_log.to_csv(out_dir / "merge_log.csv", index=False)
     return merged
+
+
+SPLIT_SEEDS = (0, 1, 2, 3, 4)
+
+
+def write_splits(
+    molecules: pd.DataFrame,
+    out_dir: Path = PROCESSED_DIR,
+    seeds: Sequence[int] = SPLIT_SEEDS,
+    frac: tuple[float, float, float] = (0.8, 0.1, 0.1),
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Save the scaffold split for every seed, plus its class balance.
+
+    Saving the assignment (rather than re-running :func:`scaffold_split`
+    later) means the baselines and the GNNs read the *same* train/val/test
+    molecules from disk, so their numbers are a fair head-to-head comparison.
+
+    Writes ``splits.csv`` (``canonical_smiles`` plus one ``seed_<k>`` column
+    holding ``"train"``, ``"val"`` or ``"test"``) and ``split_balance.csv``
+    (the :func:`split_coverage` table) to ``out_dir``.
+
+    Args:
+        molecules: The merged table from :func:`build_dataset`
+            (``canonical_smiles`` plus the :data:`LABELS` columns).
+        out_dir: Output folder (created if missing).
+        seeds: Split seeds; reported metrics are mean +/- std over these.
+        frac: Target (train, val, test) fractions.
+
+    Returns:
+        ``(splits, balance)``, the two tables written to disk.
+    """
+    smiles = molecules["canonical_smiles"].tolist()
+    splits = molecules[["canonical_smiles"]].copy()
+    for seed in seeds:
+        train, val, test = scaffold_split(smiles, frac=frac, seed=seed)
+        column = pd.Series("", index=range(len(smiles)))
+        for name, idx in (("train", train), ("val", val), ("test", test)):
+            column.iloc[idx] = name
+        splits[f"seed_{seed}"] = column.to_numpy()
+    balance = split_coverage(smiles, molecules[LABELS], seeds=seeds, frac=frac)
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    splits.to_csv(out_dir / "splits.csv", index=False)
+    balance.to_csv(out_dir / "split_balance.csv", index=False)
+    return splits, balance

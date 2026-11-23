@@ -212,3 +212,25 @@ needs them; they are recoverable via the logs.
 **Rejected:** majority vote / source priority (throws away real secondary tastes); dropping
 conflicting molecules (loses ~230 multi-taste molecules); keeping the first row's metadata
 (arbitrary and order-dependent).
+
+### 2026-11-23 — Persist scaffold splits for seeds 0–4 and their class balance
+
+**Decision:** `data.write_splits(molecules)` runs `scaffold_split` (80/10/10) for seeds
+0–4 on `molecules.csv` and writes `data/processed/splits.csv` (`canonical_smiles` +
+one `seed_<k>` column of train/val/test) and `split_balance.csv` (`split_coverage`
+output). `scripts/build_data.py` runs `build_dataset` then `write_splits` and prints the
+minimum positives per (split, label) over seeds. Sizes per seed: 2982 / 372 / 374.
+Minimum val/test positives over the 5 seeds: sweet 103/95, bitter 147/184, umami 8/9,
+tasteless 10/6, sour 0/2, salty 0/0.
+**Why:** Phase 2 baselines and Phase 3 GNNs must be scored on identical molecules; reading
+the assignment from one file makes that true by construction instead of relying on
+re-running the split with the same row order. Five seeds give the mean ± std the metrics
+rule requires. The numbers confirm the owner's evaluation rule: all four headline labels
+(sweet, bitter, umami, tasteless) have positives in val and test for every seed, while
+salty (0) and sour (0 in some val) do not, so they stay random-split-only.
+**Rejected:** recomputing splits inside each training script (silent drift if the table's
+row order or the split code changes); a single seed (no variance estimate, and a lucky or
+unlucky test set would go unnoticed); storing only indices (break if row order changes,
+unlike keying on `canonical_smiles`).
+**Caveat:** umami and tasteless have as few as 6–10 positives in a split for some seeds,
+so their per-label AUCs will be noisy; report the std, not just the mean.
