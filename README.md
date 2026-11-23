@@ -24,14 +24,14 @@ several seeds. Accuracy is never the headline number.
 
 ## Status
 
-Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) is next. Live progress is
+Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) is in progress. Live progress is
 tracked in [`docs/roadmap.md`](docs/roadmap.md).
 
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Setup, featurization, exploration notebook | mostly done |
 | 1 | Data loading, cleaning, merging, scaffold split | done (3728 molecules, scaffold splits for 5 seeds, class balance reported) |
-| 2 | Fingerprint baselines | not started |
+| 2 | Fingerprint baselines | in progress (Random Forest trained on 5 scaffold splits; scoring and XGBoost next) |
 | 3 | GNNs | not started |
 | 4 | Explainability | not started |
 | 5 | Demo and write-up | not started |
@@ -45,6 +45,7 @@ PyTorch is installed from the CPU wheel index.
 uv sync
 uv run python scripts/download_data.py   # fetches pinned, checksum-verified datasets into data/raw/
 uv run python scripts/build_data.py      # cleaned table + scaffold splits into data/processed/
+uv run python scripts/run_random_forest.py  # RF baseline -> data/processed/predictions/
 uv run jupyter lab                       # notebooks/00_explore.ipynb
 ```
 
@@ -60,9 +61,10 @@ uv run pytest
 ```
 scripts/download_data.py   pinned dataset downloads (ChemTastesDB, BitterDB)
 scripts/build_data.py      Phase 1 pipeline: merged table, scaffold splits, class balance
+scripts/run_random_forest.py  Phase 2: Random Forest baseline, val/test predictions per seed
 src/tantalus/featurize.py  SMILES -> canonical SMILES, PyG graphs, Morgan fingerprints
 src/tantalus/data.py       loaders, scaffold split, class-balance and data-quality reports
-src/tantalus/models/       baselines and GNNs
+src/tantalus/models/       baselines (baselines.py: Morgan -> Random Forest) and GNNs
 notebooks/                 exploration, numbered by phase
 docs/                      roadmap, design decisions (ADRs), learning log
 ```

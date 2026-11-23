@@ -234,3 +234,26 @@ unlucky test set would go unnoticed); storing only indices (break if row order c
 unlike keying on `canonical_smiles`).
 **Caveat:** umami and tasteless have as few as 6–10 positives in a split for some seeds,
 so their per-label AUCs will be noisy; report the std, not just the mean.
+
+### 2026-11-23 — Random Forest baseline: one class-weighted forest per label, predictions saved to disk
+
+**Decision:** `tantalus.models.baselines` loads `molecules.csv` + `splits.csv` (joined on
+`canonical_smiles`), computes 2048-bit Morgan fingerprints, and fits one
+`RandomForestClassifier(n_estimators=500, class_weight="balanced")` per label on the
+`train` rows only (binary relevance). `scripts/run_random_forest.py` does this for every
+split seed (0–4, forest `random_state` = split seed) and writes val + test probabilities and
+true labels to `data/processed/predictions/random_forest.csv` (long format: one row per
+(molecule, seed), `<label>_true` / `<label>_prob` columns). No metrics are computed here;
+the owner's `evaluate.py` scores this file.
+**Why:** One forest per label mirrors the "sigmoid per label" task: each label gets its own
+trees and its own class weights, so rare labels (umami, salty) aren't drowned out by
+bitter/sweet. `class_weight="balanced"` is the tree-model analogue of class-weighted BCE.
+Default hyperparameters with no tuning means val and test are never used to fit anything,
+so there's no leakage from model selection. Saving predictions (not scores) separates
+training from evaluation, lets the owner's metric code score RF, XGBoost and GNNs the same
+way, and means retraining isn't needed to add a metric.
+**Rejected:** sklearn's native multi-output forest (one tree set shares splits across all
+labels, and per-label class weighting is less transparent); tuning hyperparameters now (do
+it on val only, after a first score exists); computing ROC-AUC inside the script (metrics
+are the owner's `evaluate.py`).
+**Runtime:** ~2 min for 5 seeds × 6 labels on a laptop CPU.

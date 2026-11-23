@@ -133,3 +133,11 @@ TODO:
 ### We save the split assignment to `splits.csv` keyed by canonical SMILES instead of re-running `scaffold_split` in every training script. What could go wrong if the baseline and the GNN each computed their own split, even with the same seed? And why key on SMILES rather than row indices?
 
 TODO:
+
+### The Random Forest baseline uses `class_weight="balanced"`. What does that do inside the trees (hint: how it changes the impurity of a split), and why does it matter for umami (292 positives) but much less for bitter (1717)? How is it related to class-weighted binary cross-entropy in the GNN?
+
+TODO:
+
+### We train one forest per label ("binary relevance") instead of a single multi-output forest. What information about label co-occurrence (e.g. sweet + bitter) does binary relevance ignore, and why is that acceptable for a baseline?
+
+TODO:

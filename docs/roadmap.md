@@ -27,9 +27,9 @@ and class balance reported.
 
 ---
 
-## Phase 2 — Baselines Status: not started
+## Phase 2 — Baselines Status: in progress
 
-- [ ] Morgan fingerprints → Random Forest
+- [x] Morgan fingerprints → Random Forest (`models/baselines.py` + `scripts/run_random_forest.py`: one class-weighted forest per label, seeds 0–4, val/test probabilities → `data/processed/predictions/random_forest.csv`; scores pending the owner's `evaluate.py`)
 - [ ] Morgan fingerprints → XGBoost
 - [ ] Scaffold split, multiple seeds, per-label ROC-AUC / PR-AUC (mean ± std)
 
