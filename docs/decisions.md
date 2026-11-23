@@ -189,3 +189,26 @@ dropping all multi-fragment rows (loses ~850 labeled molecules).
 **Known residual:** 14 salty/umami rows have a neutral parent that is also a separate row
 (e.g. a sodium salt labeled salty and its acid labeled sour). They stay separate molecules.
 Their Murcko scaffolds match in >99% of ion rows, so the scaffold split keeps them together.
+
+### 2026-11-22 — Dedup and merge: OR labels per canonical SMILES, then clear tasteless
+
+**Decision:** `data.merge_duplicates(df)` runs on `strip_salts` output and groups rows by
+`canonical_smiles`. Labels are OR-ed across the group (`max` of each 0/1 column); if the
+result has any real taste, `tasteless` is set to 0. The output has one row per molecule with
+`n_rows` and `sources`; a merge log lists every group of 2+ rows with its distinct pre-salt
+SMILES, final labels, and whether tasteless was cleared. `data.build_dataset()` runs the
+whole pipeline (load → `assign_labels` → `strip_salts` → `merge_duplicates`) and writes
+`molecules.csv`, `dropped.csv`, `salt_log.csv`, `merge_log.csv` to `data/processed/`
+(gitignored). Result: 5063 labeled rows → 3728 molecules; 1132 merged groups (946
+cross-source BitterDB+ChemTastesDB, 185 within ChemTastesDB, 1 within BitterDB), 16
+tasteless labels cleared. Positives: sweet 1310, bitter 1717, umami 292, sour 98, salty 47,
+tasteless 213; 306 all-zero; 228 multi-label (135 sweet+bitter).
+**Why:** Owner rule (CLAUDE.md, Phase 1). In a multi-label setup, two sources saying "sweet"
+and "bitter" are compatible facts, not a conflict, so OR keeps both. Dedup must happen
+before the split so one molecule can't land in train and test (leakage). Writing the logs
+next to the table keeps every drop and merge auditable. Free-text columns (names, notes) are
+not carried into the merged table: they differ between sources and nothing downstream
+needs them; they are recoverable via the logs.
+**Rejected:** majority vote / source priority (throws away real secondary tastes); dropping
+conflicting molecules (loses ~230 multi-taste molecules); keeping the first row's metadata
+(arbitrary and order-dependent).

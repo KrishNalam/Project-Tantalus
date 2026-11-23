@@ -622,3 +622,88 @@ def strip_salts(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         }
     ).reset_index(drop=True)
     return stripped, log
+
+
+def merge_duplicates(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Collapse rows that share a ``canonical_smiles`` into one molecule.
+
+    Rules (owner decisions, see ``docs/decisions.md``):
+
+    - The multi-hot label vectors of duplicate rows are OR-ed together, so a
+      molecule that is sweet in one source and bitter in another is both.
+    - After the OR, ``tasteless`` is cleared if any real taste is set (a
+      molecule can't be tasteless and bitter at once).
+
+    Args:
+        df: Output of :func:`strip_salts` (so salts and their parents already
+            share a key). Needs ``canonical_smiles``, ``source``,
+            ``pre_salt_smiles`` and the :data:`LABELS` columns.
+
+    Returns:
+        ``(merged, log)``. ``merged`` has one row per molecule, sorted by
+        ``canonical_smiles``, with the columns ``canonical_smiles``, the
+        :data:`LABELS` (int 0/1), ``n_rows`` (input rows merged) and
+        ``sources`` (sorted, joined with ``" | "``). ``log`` has one row per
+        merged molecule (``n_rows > 1``) with ``canonical_smiles``,
+        ``n_rows``, ``sources``, ``input_smiles`` (distinct pre-salt SMILES),
+        ``labels`` (labels after the merge) and ``tasteless_cleared``.
+    """
+
+    def _join(values: pd.Series) -> str:
+        return " | ".join(sorted(values.unique()))
+
+    grouped = df.groupby("canonical_smiles", sort=True)
+    labels = grouped[LABELS].max().astype(int)
+    tastes = labels[LABELS[:-1]].any(axis=1)
+    tasteless_cleared = tastes & (labels["tasteless"] == 1)
+    labels.loc[tasteless_cleared, "tasteless"] = 0
+
+    info = grouped.agg(
+        n_rows=("source", "size"),
+        sources=("source", _join),
+        input_smiles=("pre_salt_smiles", _join),
+    )
+    merged = pd.concat([labels, info[["n_rows", "sources"]]], axis=1).reset_index()
+
+    is_merge = info["n_rows"] > 1
+    label_names = labels.apply(
+        lambda row: " | ".join(name for name in LABELS if row[name]) or "(none)",
+        axis=1,
+    )
+    log = info.assign(labels=label_names, tasteless_cleared=tasteless_cleared)
+    log = log[is_merge].reset_index()
+    return merged, log
+
+
+PROCESSED_DIR = RAW_DIR.parent / "processed"
+
+
+def build_dataset(out_dir: Path = PROCESSED_DIR) -> pd.DataFrame:
+    """Run the whole Phase 1 cleaning pipeline and write the results to disk.
+
+    Steps: load both sources -> :func:`assign_labels` -> :func:`strip_salts`
+    -> :func:`merge_duplicates`. Writes four CSVs to ``out_dir``:
+    ``molecules.csv`` (the merged table), ``dropped.csv`` (every dropped row
+    with its ``drop_reason``), ``salt_log.csv`` and ``merge_log.csv``.
+
+    Args:
+        out_dir: Output folder (created if missing). Defaults to
+            ``data/processed/``, which is gitignored.
+
+    Returns:
+        The merged table (same as ``molecules.csv``).
+    """
+    ctdb, ctdb_dropped = load_chemtastesdb()
+    bdb, bdb_dropped = load_bitterdb()
+    rows = pd.concat([ctdb, bdb], ignore_index=True)
+    labeled, label_dropped = assign_labels(rows)
+    stripped, salt_log = strip_salts(labeled)
+    merged, merge_log = merge_duplicates(stripped)
+
+    dropped = pd.concat([ctdb_dropped, bdb_dropped, label_dropped], ignore_index=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    merged.to_csv(out_dir / "molecules.csv", index=False)
+    dropped.to_csv(out_dir / "dropped.csv", index=False)
+    salt_log.to_csv(out_dir / "salt_log.csv", index=False)
+    merge_log.to_csv(out_dir / "merge_log.csv", index=False)
+    return merged

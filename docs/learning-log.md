@@ -125,3 +125,7 @@ TODO:
 ### RDKit's `Uncharger` turns `CC(=O)[O-]` into `CC(=O)O` but leaves a nitro group `[N+](=O)[O-]` alone. Why can't every charge be "neutralized", and what is the difference between a charged salt form and a zwitterion or charge-separated group?
 
 TODO:
+
+### After dedup, 946 of BitterDB's ~1000 molecules also appear in ChemTastesDB. Why would two "independent" sources overlap this much, and why does that make dedup *before* the split essential rather than optional?
+
+TODO:
