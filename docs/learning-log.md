@@ -121,3 +121,7 @@ TODO:
 ### ChemTastesDB has 304 "Non-sweetness" molecules. We label them all-zero (not sweet, but also not bitter, umami, etc.). Is "not sweet" the same as "a negative for every taste"? What would label masking in the loss (ignoring unknown labels instead of treating them as 0) change, and why might we want it later?
 
 TODO:
+
+### RDKit's `Uncharger` turns `CC(=O)[O-]` into `CC(=O)O` but leaves a nitro group `[N+](=O)[O-]` alone. Why can't every charge be "neutralized", and what is the difference between a charged salt form and a zwitterion or charge-separated group?
+
+TODO:

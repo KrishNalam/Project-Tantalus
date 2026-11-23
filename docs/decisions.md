@@ -168,3 +168,24 @@ can't silently mislabel rows.
 keyword matching on free text that may describe aftertastes or mixtures); treating
 Non-sweet/Non-bitter as tasteless (they are negatives for one taste, not "no taste");
 keeping Multitaste as its own label (not a taste, and it hides the real tastes).
+
+### 2026-11-22 — Salt rule: neutral largest-fragment parent, except salty/umami rows
+
+**Decision:** `data.strip_salts(df)` runs after `assign_labels` and before dedup. For every
+row not labeled salty or umami, `canonical_smiles` is replaced by the largest fragment
+(RDKit `LargestFragmentChooser`), neutralized with `Uncharger`, re-canonicalized. The old
+value is kept in `pre_salt_smiles`, and a log lists every changed row. Single-fragment
+charged rows (e.g. a sulfamate anion written without its Na⁺) are neutralized too. Salty
+and umami rows keep their full SMILES. Unparsable input raises. On ChemTastesDB + BitterDB
+(5063 labeled rows): 849 rows lost counterions, 58 were only neutralized, 95 ion rows kept;
+unique keys drop from 3839 to 3728, i.e. 111 salt/parent pairs will now merge in dedup.
+**Why:** Owner rule (CLAUDE.md, Phase 1). A salt and its free acid are the same tastant for
+sweet/bitter, so they must share one dedup key; otherwise near-duplicates can sit on both
+sides of the split (leakage). Neutralizing also catches counterion-free charged rows, which
+the rule left open: without it `[O-]` and `O` forms of one molecule would stay separate.
+**Rejected:** stripping only (no neutralizing), which leaves charged parents that don't
+match the neutral form; stripping salty/umami rows too (deletes the tastant, e.g. NaCl → Cl);
+dropping all multi-fragment rows (loses ~850 labeled molecules).
+**Known residual:** 14 salty/umami rows have a neutral parent that is also a separate row
+(e.g. a sodium salt labeled salty and its acid labeled sour). They stay separate molecules.
+Their Murcko scaffolds match in >99% of ion rows, so the scaffold split keeps them together.

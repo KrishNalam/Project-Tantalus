@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 from rdkit import Chem
+from rdkit.Chem.MolStandardize import rdMolStandardize
 from rdkit.Chem.Scaffolds import MurckoScaffold
 
 from tantalus.featurize import _parse, canonicalize
@@ -554,3 +555,70 @@ def assign_labels(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         labeled, no_taste, "Multitaste/Miscellaneous naming no basic taste"
     )
     return labeled.reset_index(drop=True), dropped.reset_index(drop=True)
+
+
+# Labels whose tastant is the ion itself (Na+ for salty, glutamate salts for
+# umami), so stripping counterions would remove the very thing being tasted.
+_ION_LABELS = ["salty", "umami"]
+
+
+def _parent_smiles(smiles: str) -> str | None:
+    """Largest fragment of ``smiles``, neutralized, as canonical SMILES."""
+    mol = _parse(smiles)
+    if mol is None:
+        return None
+    mol = rdMolStandardize.LargestFragmentChooser().choose(mol)
+    mol = rdMolStandardize.Uncharger().uncharge(mol)
+    return Chem.MolToSmiles(mol)
+
+
+def strip_salts(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Replace each molecule with its neutral parent, except ion-tasting rows.
+
+    For every row *not* labeled salty or umami, ``canonical_smiles`` becomes
+    the largest fragment (most atoms), neutralized by RDKit's ``Uncharger``
+    (e.g. ``CC(=O)[O-].[Na+]`` -> ``CC(=O)O``). This makes a salt and its
+    free acid/base share one key, so dedup merges them and the split can't put
+    them on opposite sides. Salty and umami rows keep their full SMILES,
+    because the ion is the tastant. Single-fragment charged rows are
+    neutralized too, so a salt written without its counterion matches.
+
+    Args:
+        df: Output of :func:`assign_labels`. Needs ``canonical_smiles``,
+            ``source`` and the :data:`LABELS` columns.
+
+    Returns:
+        ``(stripped, log)``. ``stripped`` is ``df`` with updated
+        ``canonical_smiles`` and a new ``pre_salt_smiles`` column holding the
+        old value. ``log`` has one row per changed molecule: ``row`` (index in
+        ``stripped``), ``source``, ``pre_salt_smiles``, ``canonical_smiles``
+        and ``change`` (``"largest fragment + neutralized"`` or
+        ``"neutralized"``).
+
+    Raises:
+        ValueError: If a SMILES can't be parsed (loaders should have dropped
+            those, so this means the input skipped a step).
+    """
+    df = df.reset_index(drop=True)
+    keep_ions = df[_ION_LABELS].any(axis=1)
+    old = df["canonical_smiles"]
+    new = old.where(keep_ions, old.map(_parent_smiles))
+    if new.isna().any():
+        bad = old[new.isna()].tolist()
+        raise ValueError(f"unparsable SMILES: {bad[:5]}")
+
+    stripped = df.assign(pre_salt_smiles=old, canonical_smiles=new)
+    changed = stripped[old != new]
+    multi = changed["pre_salt_smiles"].str.contains(".", regex=False)
+    log = pd.DataFrame(
+        {
+            "row": changed.index,
+            "source": changed["source"],
+            "pre_salt_smiles": changed["pre_salt_smiles"],
+            "canonical_smiles": changed["canonical_smiles"],
+            "change": multi.map(
+                {True: "largest fragment + neutralized", False: "neutralized"}
+            ),
+        }
+    ).reset_index(drop=True)
+    return stripped, log

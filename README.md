@@ -30,7 +30,7 @@ tracked in [`docs/roadmap.md`](docs/roadmap.md).
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Setup, featurization, exploration notebook | mostly done |
-| 1 | Data loading, cleaning, merging, scaffold split | in progress (labels mapped; salts and dedup next) |
+| 1 | Data loading, cleaning, merging, scaffold split | in progress (labels mapped, salts stripped; dedup next) |
 | 2 | Fingerprint baselines | not started |
 | 3 | GNNs | not started |
 | 4 | Explainability | not started |
