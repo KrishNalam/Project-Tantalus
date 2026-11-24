@@ -157,3 +157,15 @@ TODO:
 ### Salty has only 1 positive in the random-split test set for some seeds. What values can ROC-AUC take with exactly one positive, and why is a per-seed AUC like that almost useless? What would you report instead?
 
 TODO:
+
+### The GCN layer updates each atom as a degree-normalised average of its neighbours' (and its own) transformed features: `h_i' = Σ_j (1/√(d_i d_j)) W h_j`. Why normalise by degree at all, and why does stacking 3 layers let an atom "see" atoms up to 3 bonds away? What happens if you stack too many (oversmoothing)?
+
+TODO:
+
+### `GCN.forward` returns logits and the sigmoid lives inside `BCEWithLogitsLoss`. Why is `sigmoid` followed by `log` numerically risky for very large or very small logits, and what does the fused version do instead?
+
+TODO:
+
+### After message passing we have one vector per atom, but we need one prediction per molecule. Compare mean, sum and max pooling: which one can tell a molecule with 2 identical groups from one with 4? Why might that matter for taste?
+
+TODO:

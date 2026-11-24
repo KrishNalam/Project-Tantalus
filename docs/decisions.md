@@ -312,3 +312,22 @@ risk as for the scaffold split).
 **Caveat:** salty has only 1 test positive for seeds 2 and 4, so its random-split ROC-AUC is
 close to meaningless per seed. Report it with its std and the positive count, or pool
 val+test for salty.
+
+### 2026-11-23 — GCN architecture (first Phase 3 model)
+
+**Decision:** `models/gnn.py` defines `GCN`: 3 × (`GCNConv` → ReLU → dropout 0.2) with hidden
+size 128 over the 33-d atom features, `global_mean_pool` per molecule, then an MLP head
+(Linear 128 → ReLU → dropout → Linear 6) that returns **logits**, one per label. No sigmoid
+inside the model. ~55k parameters. Bond features (`edge_attr`) are ignored on purpose.
+**Why:** GCN is the simplest message-passing model, so it is the reference point that GIN
+and the bond-aware MPNN must improve on. Returning logits lets training use
+`BCEWithLogitsLoss` (sigmoid + BCE fused, numerically stable, with a per-label `pos_weight`
+for class weighting). That is still the "sigmoid per label, not softmax" task from
+CLAUDE.md. 3 layers is the low end of the planned 3–5, which roughly matches the radius-2/3
+context of the Morgan baseline. Mean pooling keeps the molecule embedding on the same scale
+for small and large molecules. 128 hidden units is small enough to train on a CPU over ~3k
+graphs. Hyperparameters are fixed defaults, not tuned. Any tuning later uses val only.
+**Rejected:** sum pooling (GIN's choice, more expressive, kept for GIN so the two models
+differ in a way that can be explained); max pooling; BatchNorm/residual connections (not
+needed at 3 layers, can be added if deeper models degrade); a sigmoid output layer with
+`BCELoss` (less stable, and `pos_weight` is only on `BCEWithLogitsLoss`).

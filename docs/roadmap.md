@@ -38,9 +38,9 @@ Done when: baseline metrics are recorded on the scaffold split as the number the
 
 ---
 
-## Phase 3 — GNN Status: not started
+## Phase 3 — GNN Status: in progress
 
-- [ ] GCN
+- [ ] GCN (model defined in `models/gnn.py`, see ADR 2026-11-23; training loop next)
 - [ ] GIN
 - [ ] MPNN using bond features
 - [ ] Early stopping on validation; compared against Phase 2

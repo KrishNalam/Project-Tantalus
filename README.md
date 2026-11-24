@@ -24,7 +24,7 @@ several seeds. Accuracy is never the headline number.
 
 ## Status
 
-Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) is in progress. Live progress is
+Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) is waiting on scoring, and Phase 3 (GNNs) has started. Live progress is
 tracked in [`docs/roadmap.md`](docs/roadmap.md).
 
 | Phase | Scope | State |
@@ -32,7 +32,7 @@ tracked in [`docs/roadmap.md`](docs/roadmap.md).
 | 0 | Setup, featurization, exploration notebook | mostly done |
 | 1 | Data loading, cleaning, merging, scaffold split | done (3728 molecules, scaffold splits for 5 seeds, class balance reported) |
 | 2 | Fingerprint baselines | in progress (Random Forest and XGBoost trained on 5 scaffold splits, plus a random split for comparison; scoring next) |
-| 3 | GNNs | not started |
+| 3 | GNNs | in progress (GCN model defined; training loop next) |
 | 4 | Explainability | not started |
 | 5 | Demo and write-up | not started |
 
@@ -66,7 +66,7 @@ scripts/build_data.py      Phase 1 pipeline: merged table, scaffold (+ compariso
 scripts/run_baseline.py    Phase 2: RF / XGBoost baselines, val/test predictions per seed
 src/tantalus/featurize.py  SMILES -> canonical SMILES, PyG graphs, Morgan fingerprints
 src/tantalus/data.py       loaders, scaffold/random splits, class-balance and data-quality reports
-src/tantalus/models/       baselines (baselines.py: Morgan -> Random Forest / XGBoost) and GNNs
+src/tantalus/models/       baselines (baselines.py: Morgan -> RF / XGBoost) and GNNs (gnn.py: GCN)
 notebooks/                 exploration, numbered by phase
 docs/                      roadmap, design decisions (ADRs), learning log
 ```
