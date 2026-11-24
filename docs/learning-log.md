@@ -193,3 +193,15 @@ TODO:
 ### GIN uses sum pooling, so bigger molecules get bigger embeddings. Some GIN test probabilities are exactly 0.0 or 1.0 in the saved CSV. Why might sum pooling push logits to extremes, and does that hurt ROC-AUC, calibration, or both?
 
 TODO:
+
+### `GINEConv` builds a neighbour's message as `ReLU(h_j + W·e_ji)`, adding a projection of the bond features to the neighbour's state. What can GINE distinguish that GIN can't (give a pair of molecular fragments), and why does the bond vector have to be projected to the atom-embedding width first?
+
+TODO:
+
+### What is a "message passing neural network" (MPNN) in the Gilmer et al. (2017) sense: message function, aggregation, update, readout? Map GCN, GIN and GINE onto those four parts.
+
+TODO:
+
+### `NNConv` (edge-conditioned convolution) turns each bond's features into a full weight matrix applied to the neighbour. Compare its parameter count and expressiveness with GINE's additive bond term. When would the extra cost be worth it?
+
+TODO:

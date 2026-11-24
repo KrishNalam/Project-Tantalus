@@ -371,3 +371,21 @@ pooling.
 parameter to explain); BatchNorm inside the MLP (the paper uses it, but GCN has none, and
 adding it would be a second change at once); mean pooling (would undo half the point of
 GIN); bond features via `GINEConv` (that is the MPNN step).
+
+### 2026-11-24 — Bond-aware MPNN: GINE (third Phase 3 model)
+
+**Decision:** `models/gnn.py` adds `GINE`, a subclass of `GIN` that swaps each `GINConv`
+for a `GINEConv(edge_dim=7)`. A neighbour's message becomes `ReLU(h_j + W·e_ji)`, where
+`e_ji` is the 7-d bond feature vector (type, conjugated, in ring) and `W` is a per-layer
+learned linear projection. Everything else (3 × 128, GIN-0, MLPs, dropout 0.2, sum pooling,
+head, `train_gnn`) is inherited unchanged. ~107k parameters (+~2k vs. GIN). Trained via
+`scripts/run_gnn.py gine` → `predictions/gine.csv`, seeds 0–4.
+**Why:** It is the smallest step from GIN that uses bond features: exactly one change, so a
+GIN/GINE gap can be attributed to bond information. Bond type matters chemically (C=O vs.
+C–O; aromatic vs. aliphatic), and GCN/GIN only see it indirectly via atom features such as
+hybridisation and aromaticity.
+**Rejected:** `NNConv` (edge-conditioned convolution, the original Gilmer MPNN: an MLP maps
+each bond to a full `d × d` weight matrix, ~128² params per bond-MLP output, heavier and
+slower on CPU, and changes more than one thing vs. GIN); a GRU update / Set2Set readout as
+in Gilmer et al. (more moving parts before any scored comparison); concatenating bond
+features into atom features (loses which neighbour the bond leads to).

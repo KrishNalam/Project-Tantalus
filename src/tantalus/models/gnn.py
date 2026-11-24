@@ -11,10 +11,16 @@ from itertools import pairwise
 import torch
 from torch import nn
 from torch_geometric.data import Batch
-from torch_geometric.nn import GCNConv, GINConv, global_add_pool, global_mean_pool
+from torch_geometric.nn import (
+    GCNConv,
+    GINConv,
+    GINEConv,
+    global_add_pool,
+    global_mean_pool,
+)
 
 from tantalus.data import LABELS
-from tantalus.featurize import ATOM_FEATURE_DIM
+from tantalus.featurize import ATOM_FEATURE_DIM, BOND_FEATURE_DIM
 
 
 class GCN(nn.Module):
@@ -22,8 +28,8 @@ class GCN(nn.Module):
 
     Architecture: ``num_layers`` x (GCNConv -> ReLU -> dropout) on the atoms,
     mean pooling over each molecule's atoms, then a two-layer MLP that outputs
-    one logit per label. GCNConv ignores bond features (``edge_attr``); the
-    later MPNN is the model that uses them.
+    one logit per label. GCNConv ignores bond features (``edge_attr``);
+    ``GINE`` is the model that uses them.
     """
 
     def __init__(
@@ -138,5 +144,67 @@ class GIN(nn.Module):
         h = batch.x
         for conv in self.convs:
             h = self.dropout(torch.relu(conv(h, batch.edge_index)))
+        pooled = global_add_pool(h, batch.batch)
+        return self.head(pooled)
+
+
+class GINE(GIN):
+    """GIN with bond features (Hu et al., 2020): the project's bond-aware MPNN.
+
+    Identical to ``GIN`` (depth, width, MLPs, sum pooling, head) except that
+    each layer uses ``GINEConv``, whose message from neighbour ``j`` to atom
+    ``i`` is ``ReLU(h_j + W e_ji)``: the neighbour's state shifted by a learned
+    linear projection of the bond's features (type, conjugated, in ring). So
+    an O bonded by a double bond sends a different message than an O bonded by
+    a single bond, which plain GIN cannot tell apart. The atom update is then
+    ``MLP(h_i + sum_j message_j)`` with ``eps`` fixed at 0, as in ``GIN``.
+    """
+
+    def __init__(
+        self,
+        in_dim: int = ATOM_FEATURE_DIM,
+        edge_dim: int = BOND_FEATURE_DIM,
+        hidden_dim: int = 128,
+        num_layers: int = 3,
+        num_labels: int = len(LABELS),
+        dropout: float = 0.2,
+    ) -> None:
+        """Build the layers.
+
+        Args:
+            in_dim: Atom feature size (``featurize.ATOM_FEATURE_DIM``).
+            edge_dim: Bond feature size (``featurize.BOND_FEATURE_DIM``).
+            hidden_dim: Width of every message-passing layer and the MLP.
+            num_layers: Message-passing layers (radius of each atom's view).
+            num_labels: Output logits, one per taste label.
+            dropout: Dropout probability after each layer (training only).
+
+        Raises:
+            ValueError: If ``num_layers`` is less than 1.
+        """
+        super().__init__(in_dim, hidden_dim, num_layers, num_labels, dropout)
+        dims = [in_dim] + [hidden_dim] * num_layers
+        # Replace GIN's convs; each layer gets its own bond projection
+        # (edge_dim -> that layer's input width, done inside GINEConv).
+        self.convs = nn.ModuleList(
+            GINEConv(
+                nn.Sequential(
+                    nn.Linear(d_in, d_out), nn.ReLU(), nn.Linear(d_out, d_out)
+                ),
+                edge_dim=edge_dim,
+            )
+            for d_in, d_out in pairwise(dims)
+        )
+
+    def forward(self, batch: Batch) -> torch.Tensor:
+        """Return logits of shape ``(num_graphs, num_labels)``.
+
+        Args:
+            batch: A PyG ``Batch`` with ``x``, ``edge_index``, ``edge_attr``
+                (row-aligned with ``edge_index``) and ``batch``.
+        """
+        h = batch.x
+        for conv in self.convs:
+            h = self.dropout(torch.relu(conv(h, batch.edge_index, batch.edge_attr)))
         pooled = global_add_pool(h, batch.batch)
         return self.head(pooled)
