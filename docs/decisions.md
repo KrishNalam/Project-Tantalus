@@ -352,3 +352,22 @@ biased for the GNN**. Headline numbers must come from **test**.
 **Rejected:** early stopping on val ROC-AUC (noisy with 8–10 umami/tasteless positives, and
 the loss is smooth); a learning-rate scheduler or tuning (no tuning before the baseline
 comparison); a weighted sampler (a second imbalance mechanism on top of `pos_weight`).
+
+### 2026-11-24 — GIN architecture (second Phase 3 model)
+
+**Decision:** `models/gnn.py` adds `GIN`: 3 × (`GINConv` → ReLU → dropout 0.2), where each
+`GINConv` wraps a 2-layer MLP (Linear → ReLU → Linear, width 128) and uses a fixed `eps = 0`
+("GIN-0"). Atoms are combined with `global_add_pool` (sum), then the same MLP head as `GCN`
+returns 6 logits. ~104k parameters. Bond features are still ignored. Trained with the
+unchanged `train.train_gnn` via `scripts/run_gnn.py gin` → `predictions/gin.csv`.
+**Why:** GIN changes exactly two things relative to GCN: sum aggregation (no degree
+normalisation) followed by an MLP, and sum pooling. Sum + an injective MLP is as
+discriminative as the Weisfeiler–Lehman test, while GCN's normalised mean can't tell some
+different neighbourhoods apart. Sum pooling keeps counts (two hydroxyls vs. four), which
+can matter for taste (e.g. polyols and sweetness). Depth, width, dropout, head, optimiser
+and early stopping all match GCN, so any difference can be explained by aggregation and
+pooling.
+**Rejected:** learnable `eps` (the GIN paper found GIN-0 comparable, and it's one less
+parameter to explain); BatchNorm inside the MLP (the paper uses it, but GCN has none, and
+adding it would be a second change at once); mean pooling (would undo half the point of
+GIN); bond features via `GINEConv` (that is the MPNN step).

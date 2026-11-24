@@ -32,7 +32,7 @@ tracked in [`docs/roadmap.md`](docs/roadmap.md).
 | 0 | Setup, featurization, exploration notebook | mostly done |
 | 1 | Data loading, cleaning, merging, scaffold split | done (3728 molecules, scaffold splits for 5 seeds, class balance reported) |
 | 2 | Fingerprint baselines | in progress (Random Forest and XGBoost trained on 5 scaffold splits, plus a random split for comparison; scoring next) |
-| 3 | GNNs | in progress (GCN trained on 5 scaffold splits with early stopping; scoring, then GIN next) |
+| 3 | GNNs | in progress (GCN and GIN trained on 5 scaffold splits with early stopping; MPNN with bond features next; scoring pending) |
 | 4 | Explainability | not started |
 | 5 | Demo and write-up | not started |
 
@@ -49,6 +49,7 @@ uv run python scripts/run_baseline.py random_forest  # -> data/processed/predict
 uv run python scripts/run_baseline.py xgboost
 uv run python scripts/run_baseline.py xgboost --split random  # deliberate comparison only
 uv run python scripts/run_gnn.py gcn     # ~7 min on CPU, -> data/processed/predictions/gcn.csv
+uv run python scripts/run_gnn.py gin     # ~6 min on CPU, -> data/processed/predictions/gin.csv
 uv run jupyter lab                       # notebooks/00_explore.ipynb
 ```
 
@@ -68,7 +69,7 @@ scripts/run_baseline.py    Phase 2: RF / XGBoost baselines, val/test predictions
 scripts/run_gnn.py         Phase 3: GNN training per seed, same prediction format as the baselines
 src/tantalus/featurize.py  SMILES -> canonical SMILES, PyG graphs, Morgan fingerprints
 src/tantalus/data.py       loaders (incl. shared load_split_table), scaffold/random splits, class-balance and data-quality reports
-src/tantalus/models/       baselines (baselines.py: Morgan -> RF / XGBoost) and GNNs (gnn.py: GCN)
+src/tantalus/models/       baselines (baselines.py: Morgan -> RF / XGBoost) and GNNs (gnn.py: GCN, GIN)
 src/tantalus/train.py      GNN training loop: class-weighted BCE, early stopping on val loss
 notebooks/                 exploration, numbered by phase
 docs/                      roadmap, design decisions (ADRs), learning log

@@ -3,6 +3,7 @@
 Usage:
     uv run python scripts/build_data.py              # once, writes the splits
     uv run python scripts/run_gnn.py gcn
+    uv run python scripts/run_gnn.py gin
     uv run python scripts/run_gnn.py gcn --split random
 
 Same output format as ``scripts/run_baseline.py``, so ``evaluate.py`` scores
@@ -16,10 +17,10 @@ import pandas as pd
 import torch
 
 from tantalus.data import LABELS, PROCESSED_DIR, SPLIT_FILES
-from tantalus.models.gnn import GCN
+from tantalus.models.gnn import GCN, GIN
 from tantalus.train import load_graph_table, predict_proba, train_gnn
 
-MODELS = {"gcn": GCN}
+MODELS = {"gcn": GCN, "gin": GIN}
 
 
 def main() -> None:

@@ -181,3 +181,15 @@ TODO:
 ### `model.train()` vs `model.eval()`: which layers in our GCN behave differently between the two modes, and what would go wrong if we predicted on test while still in training mode?
 
 TODO:
+
+### GIN updates an atom as `MLP((1 + ε)·h_i + Σ_j h_j)`, a plain **sum** of neighbours. Why can a sum tell apart neighbourhoods that a mean (or GCN's degree-normalised average) cannot? Give a tiny example with atom feature multisets.
+
+TODO:
+
+### What is the Weisfeiler–Lehman (WL) graph isomorphism test, and what does it mean that GIN is "as powerful as" 1-WL? Name a pair of different molecules (or graphs) that 1-WL — and so any GIN — can't distinguish.
+
+TODO:
+
+### GIN uses sum pooling, so bigger molecules get bigger embeddings. Some GIN test probabilities are exactly 0.0 or 1.0 in the saved CSV. Why might sum pooling push logits to extremes, and does that hurt ROC-AUC, calibration, or both?
+
+TODO:

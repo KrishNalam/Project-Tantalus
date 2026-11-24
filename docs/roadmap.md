@@ -41,7 +41,7 @@ Done when: baseline metrics are recorded on the scaffold split as the number the
 ## Phase 3 — GNN Status: in progress
 
 - [x] GCN (`models/gnn.py` + `train.py` + `scripts/run_gnn.py gcn`: seeds 0–4, early stopping on val loss, train-only `pos_weight` → `data/processed/predictions/gcn.csv`, same format as the baselines; scores pending the owner's `evaluate.py`)
-- [ ] GIN
+- [x] GIN (`models/gnn.GIN`: GIN-0, sum aggregation + sum pooling, same depth/width/head as GCN; `scripts/run_gnn.py gin` → `data/processed/predictions/gin.csv`, seeds 0–4; see ADR 2026-11-24)
 - [ ] MPNN using bond features
 - [ ] Early stopping on validation; compared against Phase 2 (early stopping done in `train.train_gnn`; comparison waits on `evaluate.py`)
 
