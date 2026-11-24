@@ -11,7 +11,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 
-from tantalus.data import LABELS, PROCESSED_DIR
+from tantalus.data import LABELS, PROCESSED_DIR, load_split_table
 from tantalus.featurize import smiles_to_fingerprint
 
 
@@ -36,14 +36,7 @@ def load_fingerprint_table(
         ValueError: If a molecule has no split row or no fingerprint
             (both would mean the processed files are out of sync).
     """
-    molecules = pd.read_csv(processed_dir / "molecules.csv")
-    splits = pd.read_csv(processed_dir / splits_file)
-    # Align on the SMILES key, not on row order (see ADR 2026-11-23).
-    splits = molecules[["canonical_smiles"]].merge(
-        splits, on="canonical_smiles", how="left", validate="one_to_one"
-    )
-    if splits.drop(columns="canonical_smiles").isna().any().any():
-        raise ValueError("some molecules have no split; rerun scripts/build_data.py")
+    molecules, splits = load_split_table(processed_dir, splits_file)
 
     fingerprints = [smiles_to_fingerprint(s) for s in molecules["canonical_smiles"]]
     if any(fp is None for fp in fingerprints):

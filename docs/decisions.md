@@ -331,3 +331,24 @@ graphs. Hyperparameters are fixed defaults, not tuned. Any tuning later uses val
 differ in a way that can be explained); max pooling; BatchNorm/residual connections (not
 needed at 3 layers, can be added if deeper models degrade); a sigmoid output layer with
 `BCELoss` (less stable, and `pos_weight` is only on `BCEWithLogitsLoss`).
+
+### 2026-11-23 — GNN training loop (`train.py`)
+
+**Decision:** `train.train_gnn` trains with Adam (lr 1e-3, batch 64) on
+`BCEWithLogitsLoss(pos_weight = n_neg / n_pos per label)`, computed from the **train split
+only**. After each epoch it computes the val loss with the same weighting. It stops after
+20 epochs without improvement (cap 200) and restores the best-val weights.
+`scripts/run_gnn.py <model>` runs seeds 0–4 on the saved splits and writes val/test
+probabilities in the same format as the baselines (`predictions/<model>.csv`). Molecules and
+splits are loaded via the new shared `data.load_split_table`, which the baselines use too.
+**Why:** `pos_weight` is the BCE equivalent of the baselines' `class_weight="balanced"` /
+`scale_pos_weight`, so all models handle imbalance the same way. Computing it on train only
+keeps held-out labels out of the loss. Early stopping on val loss is the cheapest
+regulariser and needs no tuning. Restoring the best weights (not the last) means the model
+we report is the one val picked. A shared loader and output format let `evaluate.py` score
+every model identically.
+**Leakage note:** val now selects the stopping epoch, so **val predictions are optimistically
+biased for the GNN**. Headline numbers must come from **test**.
+**Rejected:** early stopping on val ROC-AUC (noisy with 8–10 umami/tasteless positives, and
+the loss is smooth); a learning-rate scheduler or tuning (no tuning before the baseline
+comparison); a weighted sampler (a second imbalance mechanism on top of `pos_weight`).

@@ -169,3 +169,15 @@ TODO:
 ### After message passing we have one vector per atom, but we need one prediction per molecule. Compare mean, sum and max pooling: which one can tell a molecule with 2 identical groups from one with 4? Why might that matter for taste?
 
 TODO:
+
+### Early stopping restores the weights from the epoch with the lowest validation loss. Why is that a form of regularisation? And why does it make the **val** scores of the GNN optimistic, so that only **test** scores can be reported?
+
+TODO:
+
+### `pos_weight` for `BCEWithLogitsLoss` is computed from the training split only. What would change, and why would it count as leakage, if it were computed on the full dataset? Why does a label with zero training positives get weight 1 rather than "infinity"?
+
+TODO:
+
+### `model.train()` vs `model.eval()`: which layers in our GCN behave differently between the two modes, and what would go wrong if we predicted on test while still in training mode?
+
+TODO:
