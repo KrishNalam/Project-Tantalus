@@ -213,3 +213,15 @@ TODO:
 ### Training GIN twice with the same seed on CPU gave different weights once (seed 0), even though all RNGs were seeded. How can multithreaded floating-point sums (e.g. summing neighbour messages) make training non-deterministic, and what does `torch.use_deterministic_algorithms(True)` trade away to fix it?
 
 TODO:
+
+### Integrated gradients attributes `f(x) - f(baseline)` along a straight path from a baseline input. What is the *completeness* axiom, why does it make `delta` a useful correctness check, and why is an all-zero atom-feature vector a questionable "absence of information" baseline for one-hot features?
+
+TODO:
+
+### Why attribute the **logit** rather than the sigmoid probability? What happens to gradients (and so to IG scores) when a model outputs a probability of exactly 1.0?
+
+TODO:
+
+### IG with `steps` points is a Riemann-sum approximation of an integral. Why did `delta` shrink as `steps` grew (caffeine: -2.77 at 16, -0.04 at 256), and why might a ReLU network never reach exactly zero?
+
+TODO:

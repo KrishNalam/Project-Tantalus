@@ -50,9 +50,9 @@ same split.
 
 ---
 
-## Phase 4 — Explainability Status: not started
+## Phase 4 — Explainability Status: in progress
 
-- [ ] Atom-level attributions (integrated gradients / GNNExplainer)
+- [x] Atom-level attributions (integrated gradients / GNNExplainer) (`explain.integrated_gradients` / `explain_smiles`: hand-written IG on atom features, zero baseline, logit of one label, completeness gap `delta` returned; see ADR 2026-11-24)
 - [ ] Heatmaps on RDKit drawings
 - [ ] Sanity-checked against known bitter/sweet compounds
 

@@ -408,3 +408,22 @@ class internals, and `weights_only=True` refuses to unpickle arbitrary objects.
 files, and loading needs full unpickling); storing hyperparameters in the checkpoint (every
 model uses defaults today, so it would be untested code; add it when a non-default model is
 trained); retraining in Phase 4 (slow and not identical to the scored models).
+
+### 2026-11-24 — Hand-written integrated gradients for atom attributions
+
+**Decision:** `src/tantalus/explain.py` adds `integrated_gradients(model, graph, label,
+steps=128)` and `explain_smiles(...)`. The baseline sets all atom features to zero. Bonds,
+`edge_attr` and connectivity stay fixed. The method attributes the chosen label's
+**logit**, approximates the path integral with the midpoint rule, and runs all `steps`
+scaled copies as a single PyG batch. Each atom's score is the sum over its features of
+`(x - baseline) * mean_gradient`. The function also returns the completeness gap `delta`.
+**Why:** IG satisfies *completeness*: atom scores add up to `logit(x) - logit(baseline)`.
+That gives a numeric check (`delta`) that the attribution is right, which GNNExplainer
+doesn't offer. The hand-written version is about 20 lines, adds no dependency, and every
+line can be explained. Using logits avoids sigmoid saturation, since GIN gives some
+probabilities of exactly 0/1, where gradients vanish. Batching the path means one
+forward/backward pass: about 0.02 s per molecule on CPU.
+**Rejected:** Captum (an extra dependency, and its PyG wrapper hides the batching that
+matters here); GNNExplainer (it learns a mask by optimisation, so results are stochastic
+and have no completeness check); attributing probabilities (saturation); attributing bond
+features too (the GIN checkpoints don't use them; can be added for GINE later).

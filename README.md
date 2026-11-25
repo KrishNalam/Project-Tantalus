@@ -24,7 +24,7 @@ several seeds. Accuracy is never the headline number.
 
 ## Status
 
-Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) and Phase 3 (GNNs) have trained models and are waiting on scoring. Live progress is
+Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) and Phase 3 (GNNs) have trained models and are waiting on scoring. Phase 4 (explainability) has started: integrated-gradients atom attributions. Live progress is
 tracked in [`docs/roadmap.md`](docs/roadmap.md).
 
 | Phase | Scope | State |
@@ -33,7 +33,7 @@ tracked in [`docs/roadmap.md`](docs/roadmap.md).
 | 1 | Data loading, cleaning, merging, scaffold split | done (3728 molecules, scaffold splits for 5 seeds, class balance reported) |
 | 2 | Fingerprint baselines | in progress (Random Forest and XGBoost trained on 5 scaffold splits, plus a random split for comparison; scoring next) |
 | 3 | GNNs | in progress (GCN, GIN and a bond-aware MPNN (GINE) trained on 5 scaffold splits with early stopping; per-seed weights saved for Phase 4; scoring pending) |
-| 4 | Explainability | not started |
+| 4 | Explainability | in progress (integrated-gradients atom attributions for saved GNN checkpoints; heatmaps next) |
 | 5 | Demo and write-up | not started |
 
 ## Setup
@@ -73,6 +73,7 @@ src/tantalus/featurize.py  SMILES -> canonical SMILES, PyG graphs, Morgan finger
 src/tantalus/data.py       loaders (incl. shared load_split_table), scaffold/random splits, class-balance and data-quality reports
 src/tantalus/models/       baselines (baselines.py: Morgan -> RF / XGBoost) and GNNs (gnn.py: GCN, GIN, GINE, load_checkpoint)
 src/tantalus/train.py      GNN training loop: class-weighted BCE, early stopping on val loss
+src/tantalus/explain.py    Phase 4: integrated-gradients atom attributions (per label logit)
 notebooks/                 exploration, numbered by phase
 docs/                      roadmap, design decisions (ADRs), learning log
 ```
