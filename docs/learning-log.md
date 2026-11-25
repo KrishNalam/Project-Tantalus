@@ -229,3 +229,19 @@ TODO:
 ### Why use a *diverging* colormap (e.g. blue–white–red) centred on zero for attribution heatmaps instead of a sequential one? What can go wrong when each molecule is scaled by its own maximum absolute score, and when would one shared scale across molecules be better?
 
 TODO:
+
+### Averaging attributions over five seeds gave a large across-seed std (up to 16.8 for denatonium, where the mean sum was 21). What does it mean that five models with similar test AUC disagree this much about *which atoms* matter, and what does that imply about publishing a single-seed heatmap?
+
+TODO:
+
+### For sweet molecules the top-attributed atoms were carbons with a near-uniform +4 score each, so the total tracked atom count. Why would sum pooling produce a near-constant per-atom attribution, and how would mean pooling or a size-normalised readout change the IG scores?
+
+TODO:
+
+### "Precision at k" here takes the top-|motif| atoms and compares the overlap to the chance rate |motif| / |atoms|. Why is the chance rate essential to report, and what would be a better statistic for a motif that covers half the molecule?
+
+TODO:
+
+### A taste pharmacophore (saccharin's sulfonyl-imide, the sweetness "AH-B" model) is a claim about what binds a receptor. Why is agreement between a model's attributions and a pharmacophore only weak evidence that the model learned the chemistry, and what else could produce the same agreement?
+
+TODO:

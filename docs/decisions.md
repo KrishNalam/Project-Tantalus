@@ -452,3 +452,41 @@ docstring, and `delta`/the sum are printed alongside); per-atom highlight circle
 molecule (simpler, but a smoothed map reads better for substructures); matplotlib figures
 (heavier, and the result isn't PNG bytes for the API); naming files by SMILES (contains `/`, `\`,
 `#`).
+
+### 2026-11-25 — Attribution sanity check against known taste pharmacophores
+
+**Decision:** `explain.average_attributions(models, smiles, label, steps)` averages integrated
+gradients over several checkpoints and returns `(mean, std, max_abs_delta)` per atom, with a
+population std (so one model gives 0, not `nan`). `scripts/sanity_check_attributions.py` runs
+it over the five GIN seeds for a fixed panel of eight compounds whose taste chemistry is known
+(caffeine, quinine, denatonium / saccharin, acesulfame, aspartame, sucrose / MSG). Each entry
+carries a tuple of SMARTS for the motif the literature holds responsible, because a
+pharmacophore is often several disconnected groups (aspartame's free amine *and* its
+carboxyl). The check is quantitative: take the top-|motif| atoms by mean attribution and
+report *precision at k* against the chance rate |motif| / |atoms|, plus the share of positive
+attribution mass on the motif, the mean predicted probability, the max across-seed std, and
+the worst completeness gap. Output: `data/processed/attribution_sanity.csv` and one
+mean-attribution heatmap per molecule (gitignored).
+**Result (this is a partial failure, recorded deliberately):** bitter and umami pass —
+denatonium's quaternary ammonium is the single top atom (chance 0.03), MSG scores 0.83 at k
+against chance 0.55, caffeine and quinine beat chance modestly. **Sweet fails**: saccharin,
+acesulfame and sucrose all score 0.00 precision at k. The top sweet atoms are carbons at a
+near-uniform +4 each, so the attribution is tracking molecule size rather than chemistry —
+the expected signature of sum pooling, which already saturates GIN's probabilities (see the
+GIN ADR and STATUS known issues). Across-seed std is large everywhere (up to 16.8 for
+denatonium), so single-seed heatmaps should not be trusted on their own. Conclusions are
+stable at 512 steps, where every completeness gap is under 0.45, so this is model behaviour
+and not IG approximation error.
+**Why this design:** averaging over seeds is what separates "this run looked at that atom"
+from "the architecture looks at that atom", and the std makes the disagreement visible instead
+of hiding it in a mean. Precision at k with the chance rate printed next to it keeps a motif
+that covers half the molecule (MSG: 6 of 11 atoms) from looking like a success by default.
+Reporting the predicted probability matters because an attribution for a label the model
+doesn't predict explains a *negative* answer: saccharin and acesulfame sit at about 0.51, so
+the model is barely calling them sweet at all.
+**Rejected:** declaring the check passed on the bitter cases alone (the sweet result is the
+interesting one and belongs in the write-up); a pass/fail threshold (eight hand-picked
+molecules can't support one, and the motifs are approximate); putting this in `tests/` (it is
+the owner's area, and a negative result shouldn't break the suite); mean pooling to fix the
+size artefact (that changes Phase 3's architecture and must be a measured comparison, not a
+fix smuggled in through Phase 4).

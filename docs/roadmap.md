@@ -50,11 +50,12 @@ same split.
 
 ---
 
-## Phase 4 — Explainability Status: in progress
+## Phase 4 — Explainability Status: in progress (all three items implemented; the sweet
+sanity check fails, see ADR 2026-11-25)
 
 - [x] Atom-level attributions (integrated gradients / GNNExplainer) (`explain.integrated_gradients` / `explain_smiles`: hand-written IG on atom features, zero baseline, logit of one label, completeness gap `delta` returned; see ADR 2026-11-24)
 - [x] Heatmaps on RDKit drawings (`explain.draw_attributions`: RDKit similarity map, red = towards the label, blue = away, symmetric per-molecule scale, PNG bytes; `scripts/explain_molecule.py` → `data/processed/heatmaps/`; see ADR 2026-11-24)
-- [ ] Sanity-checked against known bitter/sweet compounds
+- [x] Sanity-checked against known bitter/sweet compounds (`explain.average_attributions` over the 5 GIN seeds + `scripts/sanity_check_attributions.py`: 8 known compounds vs. SMARTS pharmacophores, precision at k against the chance rate → `data/processed/attribution_sanity.csv`). **Bitter/umami pass, sweet fails** (saccharin/acesulfame/sucrose score 0.00; sweet attributions track molecule size, the sum-pooling signature). Stable at 512 steps, so not an IG artefact; see ADR 2026-11-25
 
 Done when: attribution heatmaps render and pass the sanity check.
 

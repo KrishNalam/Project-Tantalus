@@ -93,6 +93,50 @@ def explain_smiles(
     return integrated_gradients(model, graph, label, steps)
 
 
+def average_attributions(
+    models: Sequence[nn.Module], smiles: str, label: str, steps: int = 128
+) -> tuple[torch.Tensor, torch.Tensor, float] | None:
+    """Average :func:`explain_smiles` over several models of the same molecule.
+
+    One training run's attributions can be an accident of that run's
+    initialisation and early-stopping epoch. Averaging over the per-seed
+    checkpoints, and reporting the spread, separates "this model looked at
+    that atom" from "every model looked at that atom".
+
+    Args:
+        models: Trained GNNs, e.g. the five seeds from ``load_checkpoint``.
+            They must share an architecture only in the sense that the same
+            atom features go in; nothing here checks that.
+        smiles: The molecule to explain.
+        label: A name from ``data.LABELS``.
+        steps: Path steps per model, as in :func:`integrated_gradients`.
+
+    Returns:
+        ``(mean, std, max_abs_delta)``: per-atom mean and (population) standard
+        deviation across models, both ``(num_atoms,)`` in RDKit atom order, and
+        the largest completeness gap seen, so a bad approximation can't hide
+        inside the average. ``None`` if the SMILES does not parse.
+
+    Raises:
+        ValueError: If ``models`` is empty, or ``label``/``steps`` are invalid.
+    """
+    if len(models) == 0:
+        raise ValueError("need at least one model to average over")
+    graph = smiles_to_graph(smiles)
+    if graph is None:
+        return None
+    scores = []
+    deltas = []
+    for model in models:
+        attributions, delta = integrated_gradients(model, graph, label, steps)
+        scores.append(attributions)
+        deltas.append(abs(delta))
+    stacked = torch.stack(scores)
+    # Population std (unbiased=False): these are all the seeds, not a sample,
+    # and with one model it gives 0 instead of nan.
+    return stacked.mean(dim=0), stacked.std(dim=0, unbiased=False), max(deltas)
+
+
 def draw_attributions(
     smiles: str,
     attributions: Sequence[float] | torch.Tensor,
