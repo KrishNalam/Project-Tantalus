@@ -61,9 +61,9 @@ Done when: attribution heatmaps render and pass the sanity check.
 
 ---
 
-## Phase 5 — Demo & write-up Status: not started
+## Phase 5 — Demo & write-up Status: in progress
 
-- [ ] FastAPI endpoint (SMILES → predictions + attribution image)
+- [x] FastAPI endpoint (SMILES → predictions + attribution image) (`predict.Ensemble` over `gin_seed{0..4}` + `api.py`: `POST /predict` → mean ± seed-std per label, `validated` flag (false for salty/sour), base64 PNG of seed-averaged IG for the top or requested label; `uv run uvicorn tantalus.api:app`; see ADR 2026-11-25)
 - [ ] Simple frontend
 - [ ] README: architecture diagram, results table, limitations
 

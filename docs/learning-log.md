@@ -245,3 +245,15 @@ TODO:
 ### A taste pharmacophore (saccharin's sulfonyl-imide, the sweetness "AH-B" model) is a claim about what binds a receptor. Why is agreement between a model's attributions and a pharmacophore only weak evidence that the model learned the chemistry, and what else could produce the same agreement?
 
 TODO:
+
+### The API averages probabilities over five seed models and reports their std. Is the across-seed std a good uncertainty estimate? What kind of uncertainty does it capture (and miss) — e.g. why did methane (`C`, nothing like the training data) get salty 0.79?
+
+TODO:
+
+### Why load the model checkpoints once in FastAPI's `lifespan` instead of inside the request handler, and why is the `/predict` handler a plain `def` rather than `async def` when its work is CPU-bound PyTorch?
+
+TODO:
+
+### The endpoint returns the heatmap as base64 inside JSON. What does base64 encoding do, what does it cost, and when would returning `image/png` from a separate endpoint be the better design?
+
+TODO:

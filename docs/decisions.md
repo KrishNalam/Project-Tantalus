@@ -490,3 +490,28 @@ molecules can't support one, and the motifs are approximate); putting this in `t
 the owner's area, and a negative result shouldn't break the suite); mean pooling to fix the
 size artefact (that changes Phase 3's architecture and must be a measured comparison, not a
 fix smuggled in through Phase 4).
+
+### 2026-11-25 — FastAPI demo endpoint over a seed ensemble
+
+**Decision:** Phase 5's endpoint is `POST /predict` in `src/tantalus/api.py`, a thin HTTP
+wrapper around `predict.Ensemble`, which loads the five `gin_seed{0..4}.pt` checkpoints once at
+startup (FastAPI `lifespan`). For a SMILES it canonicalizes first (as in training), returns the
+mean probability and the across-seed std for every label, a `validated` flag that is false for
+salty and sour, and a base64 PNG of the seed-averaged integrated-gradients heatmap for one
+label (the requested one, or the highest-probability label by default). Invalid SMILES and
+unknown labels return HTTP 422; SMILES are capped at 500 characters.
+**Why:** Phase 4 showed single-seed attributions disagree a lot, so the demo must not show one
+seed's heatmap; averaging the probabilities over the same five models keeps prediction and
+explanation consistent, and the std is an honest uncertainty signal for free. GIN because it
+has checkpoints and the best informal pooled test AUCs; swapping in another architecture is one
+argument. Keeping the ensemble framework-free means the frontend (Gradio or a notebook) can call
+it without HTTP. The canonical string is used for both the graph and the drawing so atom order
+lines up. The endpoint is a plain `def` so FastAPI runs CPU-bound inference in a thread instead
+of blocking the event loop. Salty/sour are still predicted (the model has those heads) but
+flagged, because they were only ever scored on the random comparison split.
+**Rejected:** a separate `GET /explain` returning `image/png` (two round trips and the client
+must keep them in sync; base64 in JSON costs ~33% size on a ~20 KB image); one checkpoint
+(cheaper but shows a seed-specific heatmap); defaulting the explained label to the top
+*headline* label (it explained NaCl as "bitter" although salty was 1.00 — confusing in a demo);
+hiding salty/sour entirely; serving data from `data/` (BitterDB is CC-BY-NC-ND, the API only
+serves model outputs).
