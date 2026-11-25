@@ -205,3 +205,11 @@ TODO:
 ### `NNConv` (edge-conditioned convolution) turns each bond's features into a full weight matrix applied to the neighbour. Compare its parameter count and expressiveness with GINE's additive bond term. When would the extra cost be worth it?
 
 TODO:
+
+### What is a PyTorch `state_dict`, and why save `model.state_dict()` plus the model's name instead of `torch.save(model)`? What does `torch.load(..., weights_only=True)` protect against?
+
+TODO:
+
+### Training GIN twice with the same seed on CPU gave different weights once (seed 0), even though all RNGs were seeded. How can multithreaded floating-point sums (e.g. summing neighbour messages) make training non-deterministic, and what does `torch.use_deterministic_algorithms(True)` trade away to fix it?
+
+TODO:

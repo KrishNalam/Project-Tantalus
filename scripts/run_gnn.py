@@ -10,6 +10,11 @@ Usage:
 Same output format as ``scripts/run_baseline.py``, so ``evaluate.py`` scores
 baselines and GNNs identically: ``data/processed/predictions/<model>.csv``
 (scaffold split) or ``<model>_random.csv`` (random-split comparison).
+
+The best-val weights of every seed's model are also saved to
+``data/processed/checkpoints/<model>[_random]_seed<k>.pt`` (gitignored), so
+Phase 4 can explain the exact models that produced the predictions; reload
+them with ``models.gnn.load_checkpoint``.
 """
 
 import argparse
@@ -18,10 +23,8 @@ import pandas as pd
 import torch
 
 from tantalus.data import LABELS, PROCESSED_DIR, SPLIT_FILES
-from tantalus.models.gnn import GCN, GIN, GINE
+from tantalus.models.gnn import MODELS
 from tantalus.train import load_graph_table, predict_proba, train_gnn
-
-MODELS = {"gcn": GCN, "gin": GIN, "gine": GINE}
 
 
 def main() -> None:
@@ -32,6 +35,9 @@ def main() -> None:
     args = parser.parse_args()
 
     splits_file, _ = SPLIT_FILES[args.split]
+    suffix = "" if args.split == "scaffold" else f"_{args.split}"
+    checkpoint_dir = PROCESSED_DIR / "checkpoints"
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
     graphs, splits = load_graph_table(splits_file=splits_file)
     seed_columns = [c for c in splits.columns if c.startswith("seed_")]
     frames = []
@@ -45,6 +51,16 @@ def main() -> None:
         torch.manual_seed(seed)  # weight initialisation
         model, best_epoch = train_gnn(
             MODELS[args.model](), part["train"], part["val"], seed=seed
+        )
+        torch.save(
+            {
+                "model": args.model,
+                "split": args.split,
+                "seed": seed,
+                "best_epoch": best_epoch,
+                "state_dict": model.state_dict(),
+            },
+            checkpoint_dir / f"{args.model}{suffix}_seed{seed}.pt",
         )
 
         evaluated = split != "train"
@@ -69,7 +85,6 @@ def main() -> None:
 
     out_dir = PROCESSED_DIR / "predictions"
     out_dir.mkdir(parents=True, exist_ok=True)
-    suffix = "" if args.split == "scaffold" else f"_{args.split}"
     out_path = out_dir / f"{args.model}{suffix}.csv"
     pd.concat(frames, ignore_index=True).to_csv(out_path, index=False)
     print(f"wrote {out_path}")

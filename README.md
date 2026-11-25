@@ -24,7 +24,7 @@ several seeds. Accuracy is never the headline number.
 
 ## Status
 
-Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) is waiting on scoring, and Phase 3 (GNNs) has started. Live progress is
+Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) and Phase 3 (GNNs) have trained models and are waiting on scoring. Live progress is
 tracked in [`docs/roadmap.md`](docs/roadmap.md).
 
 | Phase | Scope | State |
@@ -32,7 +32,7 @@ tracked in [`docs/roadmap.md`](docs/roadmap.md).
 | 0 | Setup, featurization, exploration notebook | mostly done |
 | 1 | Data loading, cleaning, merging, scaffold split | done (3728 molecules, scaffold splits for 5 seeds, class balance reported) |
 | 2 | Fingerprint baselines | in progress (Random Forest and XGBoost trained on 5 scaffold splits, plus a random split for comparison; scoring next) |
-| 3 | GNNs | in progress (GCN, GIN and a bond-aware MPNN (GINE) trained on 5 scaffold splits with early stopping; scoring pending) |
+| 3 | GNNs | in progress (GCN, GIN and a bond-aware MPNN (GINE) trained on 5 scaffold splits with early stopping; per-seed weights saved for Phase 4; scoring pending) |
 | 4 | Explainability | not started |
 | 5 | Demo and write-up | not started |
 
@@ -49,6 +49,7 @@ uv run python scripts/run_baseline.py random_forest  # -> data/processed/predict
 uv run python scripts/run_baseline.py xgboost
 uv run python scripts/run_baseline.py xgboost --split random  # deliberate comparison only
 uv run python scripts/run_gnn.py gcn     # ~7 min on CPU, -> data/processed/predictions/gcn.csv
+                                         #   (+ data/processed/checkpoints/gcn_seed<k>.pt)
 uv run python scripts/run_gnn.py gin     # ~6 min on CPU, -> data/processed/predictions/gin.csv
 uv run python scripts/run_gnn.py gine    # ~6 min on CPU, -> data/processed/predictions/gine.csv (bond features)
 uv run jupyter lab                       # notebooks/00_explore.ipynb
@@ -67,10 +68,10 @@ uv run pytest
 scripts/download_data.py   pinned dataset downloads (ChemTastesDB, BitterDB)
 scripts/build_data.py      Phase 1 pipeline: merged table, scaffold (+ comparison random) splits, class balance
 scripts/run_baseline.py    Phase 2: RF / XGBoost baselines, val/test predictions per seed
-scripts/run_gnn.py         Phase 3: GNN training per seed, same prediction format as the baselines
+scripts/run_gnn.py         Phase 3: GNN training per seed, same prediction format as the baselines; saves per-seed checkpoints
 src/tantalus/featurize.py  SMILES -> canonical SMILES, PyG graphs, Morgan fingerprints
 src/tantalus/data.py       loaders (incl. shared load_split_table), scaffold/random splits, class-balance and data-quality reports
-src/tantalus/models/       baselines (baselines.py: Morgan -> RF / XGBoost) and GNNs (gnn.py: GCN, GIN, GINE)
+src/tantalus/models/       baselines (baselines.py: Morgan -> RF / XGBoost) and GNNs (gnn.py: GCN, GIN, GINE, load_checkpoint)
 src/tantalus/train.py      GNN training loop: class-weighted BCE, early stopping on val loss
 notebooks/                 exploration, numbered by phase
 docs/                      roadmap, design decisions (ADRs), learning log

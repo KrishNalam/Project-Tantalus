@@ -7,6 +7,7 @@ never inside the model; that is the numerically stable way to do it.
 """
 
 from itertools import pairwise
+from pathlib import Path
 
 import torch
 from torch import nn
@@ -208,3 +209,30 @@ class GINE(GIN):
             h = self.dropout(torch.relu(conv(h, batch.edge_index, batch.edge_attr)))
         pooled = global_add_pool(h, batch.batch)
         return self.head(pooled)
+
+
+MODELS: dict[str, type[nn.Module]] = {"gcn": GCN, "gin": GIN, "gine": GINE}
+
+
+def load_checkpoint(path: Path) -> tuple[nn.Module, dict]:
+    """Rebuild a trained GNN saved by ``scripts/run_gnn.py``.
+
+    The checkpoint holds the model name, its ``state_dict`` and run metadata
+    (seed, split, best epoch). Models are rebuilt with their default
+    hyperparameters, which is how ``run_gnn.py`` trains them.
+
+    Args:
+        path: A ``.pt`` file from ``data/processed/checkpoints/``.
+
+    Returns:
+        ``(model, metadata)``: the model in eval mode with trained weights,
+        and the checkpoint's metadata (everything except the weights).
+    """
+    # weights_only=True: only tensors and plain Python types are unpickled,
+    # so a tampered checkpoint can't run arbitrary code on load.
+    checkpoint = torch.load(path, weights_only=True)
+    model = MODELS[checkpoint["model"]]()
+    model.load_state_dict(checkpoint["state_dict"])
+    model.eval()
+    metadata = {k: v for k, v in checkpoint.items() if k != "state_dict"}
+    return model, metadata

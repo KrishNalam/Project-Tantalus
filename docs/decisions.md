@@ -389,3 +389,22 @@ each bond to a full `d × d` weight matrix, ~128² params per bond-MLP output, h
 slower on CPU, and changes more than one thing vs. GIN); a GRU update / Set2Set readout as
 in Gilmer et al. (more moving parts before any scored comparison); concatenating bond
 features into atom features (loses which neighbour the bond leads to).
+
+### 2026-11-24 — Save per-seed GNN checkpoints for Phase 4
+
+**Decision:** `scripts/run_gnn.py` saves each seed's best-val model to
+`data/processed/checkpoints/<model>[_random]_seed<k>.pt` as a dict `{model, split, seed,
+best_epoch, state_dict}`. `models/gnn.load_checkpoint(path)` rebuilds the model from the
+`MODELS` registry (moved from the script into `models/gnn.py`) with default hyperparameters,
+loads the weights with `torch.load(..., weights_only=True)` and returns `(model, metadata)`
+in eval mode. Checkpoints are gitignored (`data/`, `*.pt`). GIN was retrained to produce
+them.
+**Why:** Phase 4 attributions must explain the *same* models whose predictions
+`evaluate.py` scores. Retraining inside `explain.py` would not give the same weights,
+because CPU training here is not bit-reproducible (see Known issues in STATUS.md). Saving a
+`state_dict` plus the model name (not the pickled module) keeps the files independent of
+class internals, and `weights_only=True` refuses to unpickle arbitrary objects.
+**Rejected:** `torch.save(model)` (pickles the class by import path, so a refactor breaks old
+files, and loading needs full unpickling); storing hyperparameters in the checkpoint (every
+model uses defaults today, so it would be untested code; add it when a non-default model is
+trained); retraining in Phase 4 (slow and not identical to the scored models).
