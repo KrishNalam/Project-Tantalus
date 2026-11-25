@@ -53,7 +53,7 @@ same split.
 ## Phase 4 — Explainability Status: in progress
 
 - [x] Atom-level attributions (integrated gradients / GNNExplainer) (`explain.integrated_gradients` / `explain_smiles`: hand-written IG on atom features, zero baseline, logit of one label, completeness gap `delta` returned; see ADR 2026-11-24)
-- [ ] Heatmaps on RDKit drawings
+- [x] Heatmaps on RDKit drawings (`explain.draw_attributions`: RDKit similarity map, red = towards the label, blue = away, symmetric per-molecule scale, PNG bytes; `scripts/explain_molecule.py` → `data/processed/heatmaps/`; see ADR 2026-11-24)
 - [ ] Sanity-checked against known bitter/sweet compounds
 
 Done when: attribution heatmaps render and pass the sanity check.

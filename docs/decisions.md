@@ -427,3 +427,28 @@ forward/backward pass: about 0.02 s per molecule on CPU.
 matters here); GNNExplainer (it learns a mask by optimisation, so results are stochastic
 and have no completeness check); attributing probabilities (saturation); attributing bond
 features too (the GIN checkpoints don't use them; can be added for GINE later).
+
+### 2026-11-24 — Attribution heatmaps with RDKit similarity maps
+
+**Decision:** `explain.draw_attributions(smiles, attributions, size=(400, 300))` returns PNG
+bytes (or `None` for an invalid SMILES). It draws RDKit's similarity map
+(`SimilarityMaps.GetSimilarityMapFromWeights` on a `MolDraw2DCairo`). Each atom adds a
+Gaussian blob weighted by its IG score, using the diverging `bwr` colormap: red pushes towards
+the label, blue pushes away, and white means no effect. The colour scale is symmetric around 0
+and set by the molecule's largest absolute score. A one-atom molecule (similarity maps need
+two atoms) is drawn with a plain red/blue atom highlight. `scripts/explain_molecule.py
+"<SMILES>" <label> [--model gin --seed 0]` loads a saved checkpoint and writes
+`data/processed/heatmaps/<model>_seed<k>_<label>_<md5[:8]>.png` (gitignored).
+**Why:** Similarity maps are RDKit's standard look for per-atom contributions, so there is no new
+dependency. A diverging map with zero fixed at white is the right encoding for signed scores:
+a sequential map would make negative atoms look like "weak positives". Returning bytes rather
+than writing a file means the Phase 5 FastAPI endpoint can send the image directly. Atom
+order matches because RDKit keeps the input order when the same SMILES string is parsed again,
+and `smiles_to_graph` doesn't reorder atoms. A length mismatch raises instead of silently
+mis-colouring.
+**Rejected:** a fixed colour scale across molecules (IG sums differ by an order of magnitude
+between molecules, so small molecules would wash out; per-molecule scaling is stated in the
+docstring, and `delta`/the sum are printed alongside); per-atom highlight circles for every
+molecule (simpler, but a smoothed map reads better for substructures); matplotlib figures
+(heavier, and the result isn't PNG bytes for the API); naming files by SMILES (contains `/`, `\`,
+`#`).

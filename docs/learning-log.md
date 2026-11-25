@@ -225,3 +225,7 @@ TODO:
 ### IG with `steps` points is a Riemann-sum approximation of an integral. Why did `delta` shrink as `steps` grew (caffeine: -2.77 at 16, -0.04 at 256), and why might a ReLU network never reach exactly zero?
 
 TODO:
+
+### Why use a *diverging* colormap (e.g. blue–white–red) centred on zero for attribution heatmaps instead of a sequential one? What can go wrong when each molecule is scaled by its own maximum absolute score, and when would one shared scale across molecules be better?
+
+TODO:

@@ -24,7 +24,7 @@ several seeds. Accuracy is never the headline number.
 
 ## Status
 
-Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) and Phase 3 (GNNs) have trained models and are waiting on scoring. Phase 4 (explainability) has started: integrated-gradients atom attributions. Live progress is
+Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) and Phase 3 (GNNs) have trained models and are waiting on scoring. Phase 4 (explainability) has started: integrated-gradients atom attributions, drawn as heatmaps on the molecule. Live progress is
 tracked in [`docs/roadmap.md`](docs/roadmap.md).
 
 | Phase | Scope | State |
@@ -33,7 +33,7 @@ tracked in [`docs/roadmap.md`](docs/roadmap.md).
 | 1 | Data loading, cleaning, merging, scaffold split | done (3728 molecules, scaffold splits for 5 seeds, class balance reported) |
 | 2 | Fingerprint baselines | in progress (Random Forest and XGBoost trained on 5 scaffold splits, plus a random split for comparison; scoring next) |
 | 3 | GNNs | in progress (GCN, GIN and a bond-aware MPNN (GINE) trained on 5 scaffold splits with early stopping; per-seed weights saved for Phase 4; scoring pending) |
-| 4 | Explainability | in progress (integrated-gradients atom attributions for saved GNN checkpoints; heatmaps next) |
+| 4 | Explainability | in progress (integrated-gradients atom attributions for saved GNN checkpoints, rendered as RDKit heatmaps; sanity check next) |
 | 5 | Demo and write-up | not started |
 
 ## Setup
@@ -52,6 +52,7 @@ uv run python scripts/run_gnn.py gcn     # ~7 min on CPU, -> data/processed/pred
                                          #   (+ data/processed/checkpoints/gcn_seed<k>.pt)
 uv run python scripts/run_gnn.py gin     # ~6 min on CPU, -> data/processed/predictions/gin.csv
 uv run python scripts/run_gnn.py gine    # ~6 min on CPU, -> data/processed/predictions/gine.csv (bond features)
+uv run python scripts/explain_molecule.py "CN1C=NC2=C1C(=O)N(C(=O)N2C)C" bitter  # heatmap PNG (needs gin checkpoints)
 uv run jupyter lab                       # notebooks/00_explore.ipynb
 ```
 
@@ -73,7 +74,8 @@ src/tantalus/featurize.py  SMILES -> canonical SMILES, PyG graphs, Morgan finger
 src/tantalus/data.py       loaders (incl. shared load_split_table), scaffold/random splits, class-balance and data-quality reports
 src/tantalus/models/       baselines (baselines.py: Morgan -> RF / XGBoost) and GNNs (gnn.py: GCN, GIN, GINE, load_checkpoint)
 src/tantalus/train.py      GNN training loop: class-weighted BCE, early stopping on val loss
-src/tantalus/explain.py    Phase 4: integrated-gradients atom attributions (per label logit)
+scripts/explain_molecule.py Phase 4: one molecule + label -> attribution heatmap PNG from a saved checkpoint
+src/tantalus/explain.py    Phase 4: integrated-gradients atom attributions (per label logit) and heatmap drawing
 notebooks/                 exploration, numbered by phase
 docs/                      roadmap, design decisions (ADRs), learning log
 ```
