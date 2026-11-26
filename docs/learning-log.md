@@ -257,3 +257,11 @@ TODO:
 ### The endpoint returns the heatmap as base64 inside JSON. What does base64 encoding do, what does it cost, and when would returning `image/png` from a separate endpoint be the better design?
 
 TODO:
+
+### The Gradio page calls `predict.Ensemble` in-process instead of sending requests to the FastAPI endpoint. What are the trade-offs between those two designs (one process vs. two services), and when would you switch the frontend to call the API?
+
+TODO:
+
+### The demo loads the checkpoints lazily with `functools.cache` on the first request, while the API loads them eagerly at startup in `lifespan`. What does each choice cost (first-request latency, startup time, failing fast on a missing checkpoint)?
+
+TODO:

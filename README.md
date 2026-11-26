@@ -16,15 +16,15 @@ structure with a graph neural network. The task is multi-label: one molecule can
 5. **GNNs.** GCN, then GIN, then an MPNN that uses bond features, built with PyTorch Geometric.
    Each label gets its own sigmoid output, trained with class-weighted binary cross-entropy.
 6. **Explainability.** Atom-level attributions are drawn as heatmaps on the molecule.
-7. **Demo.** A FastAPI endpoint takes a SMILES string and returns predictions plus an
-   attribution image.
+7. **Demo.** A FastAPI endpoint and a Gradio page take a SMILES string and return predictions
+   plus an attribution image.
 
 Results are reported as per-label ROC-AUC and PR-AUC, with macro averages, as mean ± std over
 several seeds. Accuracy is never the headline number.
 
 ## Status
 
-Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) and Phase 3 (GNNs) have trained models and are waiting on scoring. Phase 4 (explainability) has started: integrated-gradients atom attributions, drawn as heatmaps on the molecule, and sanity-checked against known taste pharmacophores — bitter and umami land on the right atoms, sweet does not (the sweet attributions track molecule size). Phase 5 (demo) has started: a FastAPI endpoint returns seed-averaged predictions and an attribution heatmap for any SMILES. Live progress is
+Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) and Phase 3 (GNNs) have trained models and are waiting on scoring. Phase 4 (explainability) has started: integrated-gradients atom attributions, drawn as heatmaps on the molecule, and sanity-checked against known taste pharmacophores — bitter and umami land on the right atoms, sweet does not (the sweet attributions track molecule size). Phase 5 (demo) has started: a FastAPI endpoint and a Gradio page return seed-averaged predictions and an attribution heatmap for any SMILES. Live progress is
 tracked in [`docs/roadmap.md`](docs/roadmap.md).
 
 | Phase | Scope | State |
@@ -34,7 +34,7 @@ tracked in [`docs/roadmap.md`](docs/roadmap.md).
 | 2 | Fingerprint baselines | in progress (Random Forest and XGBoost trained on 5 scaffold splits, plus a random split for comparison; scoring next) |
 | 3 | GNNs | in progress (GCN, GIN and a bond-aware MPNN (GINE) trained on 5 scaffold splits with early stopping; per-seed weights saved for Phase 4; scoring pending) |
 | 4 | Explainability | in progress (integrated-gradients atom attributions for saved GNN checkpoints, rendered as RDKit heatmaps, averaged over 5 seeds and checked against known pharmacophores: bitter/umami pass, **sweet fails** — see `docs/decisions.md` 2026-11-25) |
-| 5 | Demo and write-up | in progress (FastAPI `POST /predict`: SMILES -> 5-seed GIN probabilities + averaged attribution PNG; frontend and write-up next) |
+| 5 | Demo and write-up | in progress (FastAPI `POST /predict`: SMILES -> 5-seed GIN probabilities + averaged attribution PNG; Gradio page `uv run python -m tantalus.demo`; write-up next) |
 
 ## Setup
 
@@ -53,6 +53,7 @@ uv run python scripts/run_gnn.py gcn     # ~7 min on CPU, -> data/processed/pred
 uv run python scripts/run_gnn.py gin     # ~6 min on CPU, -> data/processed/predictions/gin.csv
 uv run python scripts/run_gnn.py gine    # ~6 min on CPU, -> data/processed/predictions/gine.csv (bond features)
 uv run python scripts/explain_molecule.py "CN1C=NC2=C1C(=O)N(C(=O)N2C)C" bitter  # heatmap PNG (needs gin checkpoints)
+uv run python -m tantalus.demo           # Gradio demo on http://127.0.0.1:7860 (needs gin checkpoints)
 uv run jupyter lab                       # notebooks/00_explore.ipynb
 ```
 
@@ -79,6 +80,7 @@ scripts/sanity_check_attributions.py Phase 4: known-compound panel vs. SMARTS ph
 src/tantalus/explain.py    Phase 4: integrated-gradients atom attributions (per label logit), seed averaging, heatmap drawing
 src/tantalus/predict.py    Phase 5: seed ensemble (5 GIN checkpoints) -> mean/std probabilities + averaged heatmap
 src/tantalus/api.py        Phase 5: FastAPI app (uv run uvicorn tantalus.api:app)
+src/tantalus/demo.py       Phase 5: Gradio page (uv run python -m tantalus.demo)
 notebooks/                 exploration, numbered by phase
 docs/                      roadmap, design decisions (ADRs), learning log
 ```

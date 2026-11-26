@@ -515,3 +515,24 @@ must keep them in sync; base64 in JSON costs ~33% size on a ~20 KB image); one c
 *headline* label (it explained NaCl as "bitter" although salty was 1.00 — confusing in a demo);
 hiding salty/sour entirely; serving data from `data/` (BitterDB is CC-BY-NC-ND, the API only
 serves model outputs).
+
+### 2026-11-25 — Gradio frontend calling the ensemble in-process
+
+**Decision:** Phase 5's frontend is a Gradio page, `src/tantalus/demo.py` (`uv run python -m
+tantalus.demo`, port 7860). It calls `predict.Ensemble` directly, not the FastAPI endpoint. One
+SMILES box and a "label to explain" dropdown (default: top label) produce the canonical SMILES,
+a table of mean probability, seed std and a `validated` column (no for salty/sour), the
+seed-averaged heatmap with its completeness gap, and a fixed note on how to read the output and
+its known limits (no out-of-domain check, sweet heatmaps track size). Empty, over-500-character
+and unparseable inputs are shown as `gr.Error` messages in the page. Checkpoints load lazily on
+the first request through `functools.cache`.
+**Why:** Gradio gives a working page in about 100 lines of Python, with nothing new to learn
+for the stack, and it can be deployed as-is to Hugging Face Spaces. Calling the ensemble
+in-process means one command runs the demo, and the outputs are identical to the API because
+both share `Ensemble`. The page states the limitations next to the numbers, so a viewer doesn't
+take a confident probability on an odd molecule at face value.
+**Rejected:** a Next.js page (a second language and toolchain for a portfolio demo; it would
+also need the API running and CORS); Gradio calling the FastAPI endpoint over HTTP (two
+processes to start for no gain locally); mounting Gradio inside the FastAPI app (couples the
+two; worth revisiting if both have to be deployed as one service); loading checkpoints at
+import time (makes `import tantalus.demo` slow and fail without checkpoints).
