@@ -24,7 +24,7 @@ several seeds. Accuracy is never the headline number.
 
 ## Status
 
-Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) and Phase 3 (GNNs) have trained models and are waiting on scoring. Phase 4 (explainability) has started: integrated-gradients atom attributions, drawn as heatmaps on the molecule, and sanity-checked against known taste pharmacophores — bitter and umami land on the right atoms, sweet does not (the sweet attributions track molecule size). Phase 5 (demo) has started: a FastAPI endpoint and a Gradio page return seed-averaged predictions and an attribution heatmap for any SMILES. Live progress is
+Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) and Phase 3 (GNNs) have trained models and are waiting on scoring. Phase 4 (explainability) has started: integrated-gradients atom attributions, drawn as heatmaps on the molecule, and sanity-checked against known taste pharmacophores — bitter and umami land on the right atoms, sweet does not (the sweet attributions track molecule size). Phase 5 (demo) has started: a FastAPI endpoint and a Gradio page return seed-averaged predictions and an attribution heatmap for any SMILES, and this README has the architecture diagram and limitations; the results table fills in once scoring exists. Live progress is
 tracked in [`docs/roadmap.md`](docs/roadmap.md).
 
 | Phase | Scope | State |
@@ -34,7 +34,57 @@ tracked in [`docs/roadmap.md`](docs/roadmap.md).
 | 2 | Fingerprint baselines | in progress (Random Forest and XGBoost trained on 5 scaffold splits, plus a random split for comparison; scoring next) |
 | 3 | GNNs | in progress (GCN, GIN and a bond-aware MPNN (GINE) trained on 5 scaffold splits with early stopping; per-seed weights saved for Phase 4; scoring pending) |
 | 4 | Explainability | in progress (integrated-gradients atom attributions for saved GNN checkpoints, rendered as RDKit heatmaps, averaged over 5 seeds and checked against known pharmacophores: bitter/umami pass, **sweet fails** — see `docs/decisions.md` 2026-11-25) |
-| 5 | Demo and write-up | in progress (FastAPI `POST /predict`: SMILES -> 5-seed GIN probabilities + averaged attribution PNG; Gradio page `uv run python -m tantalus.demo`; write-up next) |
+| 5 | Demo and write-up | in progress (FastAPI `POST /predict`: SMILES -> 5-seed GIN probabilities + averaged attribution PNG; Gradio page `uv run python -m tantalus.demo`; README architecture diagram and limitations written, results table waits on scoring) |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Data["Phase 1: data"]
+        A[ChemTastesDB + BitterDB] --> B[canonicalize SMILES<br/>labels, salts, dedup/merge]
+        B --> C[(molecules.csv<br/>3728 molecules, 6 labels)]
+        C --> D[Bemis-Murcko scaffold split<br/>seeds 0-4]
+    end
+    subgraph Feat["featurize.py"]
+        E[Morgan fingerprint<br/>r=2, 2048 bits]
+        F[molecular graph<br/>33-d atoms, 7-d bonds]
+    end
+    D --> E --> G[Random Forest / XGBoost<br/>one model per label]
+    D --> F --> H[GCN / GIN / GINE<br/>3 layers, pooling, MLP head]
+    G --> P[(val/test predictions<br/>per model and seed)]
+    H --> P
+    P --> M[evaluate.py<br/>ROC-AUC, PR-AUC, mean +/- std]
+    H --> K[(5 GIN checkpoints)]
+    K --> I[integrated gradients<br/>seed-averaged atom heatmap]
+    K --> J[predict.Ensemble]
+    I --> J
+    J --> API[FastAPI POST /predict]
+    J --> UI[Gradio page]
+```
+
+Every model reads the same saved splits and writes predictions in the same format, so the
+baselines and GNNs are scored by one piece of code on identical test molecules. The demo serves
+the GIN seed ensemble: probabilities are the mean over 5 seeds (with their std as a rough
+disagreement signal), and the heatmap is the seed-averaged integrated-gradients attribution for
+one label.
+
+## Results
+
+Headline numbers are test-set macro ROC-AUC and PR-AUC over sweet, bitter, umami and
+tasteless on the scaffold split, mean ± std over seeds 0–4. Salty and sour are scored only on
+the random split, as a flagged side comparison. GNN val scores are not reported, because val
+chose the early-stopping epoch.
+
+| Model | Input | Macro ROC-AUC | Macro PR-AUC |
+|---|---|---|---|
+| Random Forest | Morgan fingerprint | pending | pending |
+| XGBoost | Morgan fingerprint | pending | pending |
+| GCN | graph (atoms) | pending | pending |
+| GIN | graph (atoms) | pending | pending |
+| GINE | graph (atoms + bonds) | pending | pending |
+
+All predictions exist in `data/processed/predictions/`; the table is filled once the
+evaluation code (`evaluate.py`) is written.
 
 ## Setup
 
@@ -98,3 +148,14 @@ docs/                      roadmap, design decisions (ADRs), learning log
 - Salty and sour have too few molecules to evaluate on the scaffold split. They are reported only
   on a random split, as a deliberate side comparison.
 - SMILES are stereo-free, so enantiomers count as one molecule.
+- Non-sweet / non-bitter rows get all-zero labels, which treats "unknown" as "negative" for the
+  other tastes.
+- Umami and tasteless have only 6–10 positives in some scaffold val/test splits, so their
+  per-seed AUCs are noisy.
+- There is no applicability-domain check. The demo gives confident outputs for molecules
+  unlike the training data (methane gets salty 0.79), and the seed std doesn't catch this.
+- Sweet attributions fail the pharmacophore sanity check: they track molecule size, probably
+  because GIN sums over atoms. Bitter and umami attributions land on the expected groups.
+- Heatmap colours are scaled per molecule, so intensities can't be compared across drawings.
+- GNN training on CPU isn't bit-reproducible across reruns; the saved checkpoints are the
+  source of truth.

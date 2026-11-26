@@ -65,6 +65,6 @@ Done when: attribution heatmaps render and pass the sanity check.
 
 - [x] FastAPI endpoint (SMILES → predictions + attribution image) (`predict.Ensemble` over `gin_seed{0..4}` + `api.py`: `POST /predict` → mean ± seed-std per label, `validated` flag (false for salty/sour), base64 PNG of seed-averaged IG for the top or requested label; `uv run uvicorn tantalus.api:app`; see ADR 2026-11-25)
 - [x] Simple frontend (`demo.py`: Gradio page calling `predict.Ensemble` in-process; SMILES + label to explain → canonical SMILES, probability / seed std / validated table, averaged heatmap, limitations note; `uv run python -m tantalus.demo`; see ADR 2026-11-25)
-- [ ] README: architecture diagram, results table, limitations
+- [ ] README: architecture diagram, results table, limitations (architecture diagram (Mermaid) and limitations written; results table laid out with every row "pending", waiting on the owner's `evaluate.py`)
 
 Done when: a user can submit a SMILES and get predictions + an attribution image.

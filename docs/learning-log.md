@@ -265,3 +265,7 @@ TODO:
 ### The demo loads the checkpoints lazily with `functools.cache` on the first request, while the API loads them eagerly at startup in `lifespan`. What does each choice cost (first-request latency, startup time, failing fast on a missing checkpoint)?
 
 TODO:
+
+### The README lists "no applicability-domain check" as a limitation. What is a model's applicability domain, how could you flag a SMILES outside it (for example, low nearest-neighbour Tanimoto similarity to the training set), and why does the seed std not catch it?
+
+TODO:
