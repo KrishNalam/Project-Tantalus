@@ -536,3 +536,27 @@ also need the API running and CORS); Gradio calling the FastAPI endpoint over HT
 processes to start for no gain locally); mounting Gradio inside the FastAPI app (couples the
 two; worth revisiting if both have to be deployed as one service); loading checkpoints at
 import time (makes `import tantalus.demo` slow and fail without checkpoints).
+
+### 2026-11-26 — Pin GNN training to one CPU thread for reproducibility
+
+**Decision:** `train.make_reproducible(seed, num_threads=1)` seeds torch, pins intra-op threads
+with `torch.set_num_threads(1)` and turns on `torch.use_deterministic_algorithms(True)`.
+`scripts/run_gnn.py` calls it before building each seed's model (it replaces the bare
+`torch.manual_seed`).
+**Why:** Measured, not guessed: GIN seed 0 trained for 15 epochs gave identical weights for two
+runs at the same thread count (also across processes), but 1, 2 and 4 threads gave weights up
+to 0.42 apart and best epochs 15/13/9. PyTorch splits reductions (the scatter-add in message
+passing, matmul) into one chunk per thread, and float addition is not associative, so the
+thread count changes the rounding. One thread is the only setting that gives the same answer on
+any machine. The deterministic-algorithms flag costs nothing on CPU today (GCN, GIN and GINE all
+train with it on) and will raise loudly if a future op has no deterministic kernel.
+**Cost:** about 25% slower than the default 2 threads on this laptop (25 s vs 20 s for 15 GIN
+epochs), so roughly 7-8 min instead of 6 for five seeds.
+**Not retrained:** the existing `gin_seed{0..4}.pt` and `predictions/*.csv` were made with the
+default thread count and stay the source of truth for the numbers already recorded. A rerun of
+`run_gnn.py` will now reproduce itself exactly, but will differ slightly from those files.
+**Rejected:** pinning to 2 threads (faster here, but the result then depends on the thread count
+another machine would choose if someone removes the pin, and it's no more portable);
+`use_deterministic_algorithms` alone (it guards against nondeterministic kernels, mostly a CUDA
+concern, but does not fix how a reduction is split across threads; not tested on its own here); an env var such as
+`OMP_NUM_THREADS` (easy to forget, and it lives outside the code).

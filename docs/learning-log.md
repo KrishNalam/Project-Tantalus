@@ -269,3 +269,7 @@ TODO:
 ### The README lists "no applicability-domain check" as a limitation. What is a model's applicability domain, how could you flag a SMILES outside it (for example, low nearest-neighbour Tanimoto similarity to the training set), and why does the seed std not catch it?
 
 TODO:
+
+### Training the same GNN with the same seed on 1, 2 and 4 CPU threads gave different weights. Why does the number of threads change a floating-point result, and why does pinning the thread count (rather than only setting seeds) make training reproducible?
+
+TODO:

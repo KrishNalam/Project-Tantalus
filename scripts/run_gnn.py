@@ -15,6 +15,9 @@ The best-val weights of every seed's model are also saved to
 ``data/processed/checkpoints/<model>[_random]_seed<k>.pt`` (gitignored), so
 Phase 4 can explain the exact models that produced the predictions; reload
 them with ``models.gnn.load_checkpoint``.
+
+Training runs on one CPU thread (``train.make_reproducible``), so rerunning
+this script reproduces the same checkpoints bit for bit.
 """
 
 import argparse
@@ -24,7 +27,12 @@ import torch
 
 from tantalus.data import LABELS, PROCESSED_DIR, SPLIT_FILES
 from tantalus.models.gnn import MODELS
-from tantalus.train import load_graph_table, predict_proba, train_gnn
+from tantalus.train import (
+    load_graph_table,
+    make_reproducible,
+    predict_proba,
+    train_gnn,
+)
 
 
 def main() -> None:
@@ -48,7 +56,7 @@ def main() -> None:
             name: [g for g, s in zip(graphs, split) if s == name]
             for name in ("train", "val")
         }
-        torch.manual_seed(seed)  # weight initialisation
+        make_reproducible(seed)  # weight init + pinned threads, see train.py
         model, best_epoch = train_gnn(
             MODELS[args.model](), part["train"], part["val"], seed=seed
         )

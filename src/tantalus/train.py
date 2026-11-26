@@ -17,6 +17,28 @@ from tantalus.data import LABELS, PROCESSED_DIR, load_split_table
 from tantalus.featurize import smiles_to_graph
 
 
+def make_reproducible(seed: int, num_threads: int = 1) -> None:
+    """Make a CPU training run bit-identical across reruns.
+
+    Seeds torch's global RNG (weight initialisation, dropout) and pins the
+    number of intra-op threads. Pinning matters: PyTorch splits sums such as
+    the scatter-add in message passing into one chunk per thread, and float
+    addition isn't associative, so 1, 2 and 4 threads give slightly different
+    gradients that compound into different best epochs. With a fixed thread
+    count the result is identical every run. ``use_deterministic_algorithms``
+    makes torch raise on any op that has no deterministic implementation
+    instead of silently varying.
+
+    Args:
+        seed: Seed for ``torch.manual_seed``.
+        num_threads: Intra-op threads to pin. 1 is portable (same result on
+            any machine) and costs about 25% wall time vs. 2 on this laptop.
+    """
+    torch.manual_seed(seed)
+    torch.set_num_threads(num_threads)
+    torch.use_deterministic_algorithms(True)
+
+
 def load_graph_table(
     processed_dir: Path = PROCESSED_DIR, splits_file: str = "splits.csv"
 ) -> tuple[list[Data], pd.DataFrame]:
