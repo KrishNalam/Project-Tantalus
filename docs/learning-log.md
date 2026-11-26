@@ -301,3 +301,7 @@ TODO:
 ### One mean-pooling GIN seed hit its best validation loss at epoch 3 and stopped there (patience 20), giving a much worse model. How can early stopping lock in an undertrained model, and what are two ways to guard against it?
 
 TODO:
+
+### Skipping the validation pass for the first 20 epochs changed the *training* of every seed, even though validation never updates weights. Iterating a `DataLoader` uses up torch's global random number generator. Why does that change the dropout masks in later training batches, and how would you make a training run's randomness immune to extra evaluation calls?
+
+TODO:

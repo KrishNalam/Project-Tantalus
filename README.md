@@ -84,6 +84,7 @@ chose the early-stopping epoch.
 | GIN | graph (atoms) | pending | pending |
 | GINE | graph (atoms + bonds) | pending | pending |
 | GIN, mean pooling (ablation) | graph (atoms) | pending | pending |
+| GIN, mean pooling, min. 20 epochs | graph (atoms) | pending | pending |
 
 All predictions exist in `data/processed/predictions/`; the table is filled once the
 evaluation code (`evaluate.py`) is written.

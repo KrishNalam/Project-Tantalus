@@ -7,6 +7,7 @@ Usage:
     uv run python scripts/run_gnn.py gine   # bond-aware MPNN
     uv run python scripts/run_gnn.py gin_mean   # GIN with mean pooling
     uv run python scripts/run_gnn.py gcn --split random
+    uv run python scripts/run_gnn.py gin_mean --min-epochs 20  # -> gin_mean_min20
 
 Same output format as ``scripts/run_baseline.py``, so ``evaluate.py`` scores
 baselines and GNNs identically: ``data/processed/predictions/<model>.csv``
@@ -16,6 +17,10 @@ The best-val weights of every seed's model are also saved to
 ``data/processed/checkpoints/<model>[_random]_seed<k>.pt`` (gitignored), so
 Phase 4 can explain the exact models that produced the predictions; reload
 them with ``models.gnn.load_checkpoint``.
+
+``--min-epochs N`` (N > 1) turns on the minimum-epoch guard in
+``train.train_gnn`` and appends ``_min<N>`` to every output name, so guarded
+runs never overwrite the unguarded ones they are compared against.
 
 Training runs on one CPU thread (``train.make_reproducible``), so rerunning
 this script reproduces the same checkpoints bit for bit.
@@ -41,10 +46,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("model", choices=sorted(MODELS))
     parser.add_argument("--split", choices=sorted(SPLIT_FILES), default="scaffold")
+    parser.add_argument(
+        "--min-epochs",
+        type=int,
+        default=1,
+        help="first epoch eligible for early stopping's best epoch (1 = off)",
+    )
     args = parser.parse_args()
 
     splits_file, _ = SPLIT_FILES[args.split]
     suffix = "" if args.split == "scaffold" else f"_{args.split}"
+    if args.min_epochs > 1:
+        suffix += f"_min{args.min_epochs}"
     checkpoint_dir = PROCESSED_DIR / "checkpoints"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     graphs, splits = load_graph_table(splits_file=splits_file)
@@ -59,7 +72,11 @@ def main() -> None:
         }
         make_reproducible(seed)  # weight init + pinned threads, see train.py
         model, best_epoch = train_gnn(
-            MODELS[args.model](), part["train"], part["val"], seed=seed
+            MODELS[args.model](),
+            part["train"],
+            part["val"],
+            seed=seed,
+            min_epochs=args.min_epochs,
         )
         torch.save(
             {
@@ -67,6 +84,7 @@ def main() -> None:
                 "split": args.split,
                 "seed": seed,
                 "best_epoch": best_epoch,
+                "min_epochs": args.min_epochs,
                 "state_dict": model.state_dict(),
             },
             checkpoint_dir / f"{args.model}{suffix}_seed{seed}.pt",

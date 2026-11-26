@@ -110,6 +110,7 @@ def train_gnn(
     batch_size: int = 64,
     max_epochs: int = 200,
     patience: int = 20,
+    min_epochs: int = 1,
 ) -> tuple[nn.Module, int]:
     """Train with Adam and keep the weights from the best validation epoch.
 
@@ -117,6 +118,13 @@ def train_gnn(
     computed; if it hasn't improved for ``patience`` epochs, training stops
     and the best epoch's weights are restored. Val is only used to pick the
     epoch, never to update weights.
+
+    Minimum-epoch guard: epochs before ``min_epochs`` are trained but never
+    become the "best" checkpoint and never trigger stopping, so the returned
+    model has had at least ``min_epochs`` epochs of updates. This stops a
+    lucky-low val loss in the first few epochs (noisy with few val positives)
+    from locking in an almost untrained model. ``min_epochs=1`` is plain
+    early stopping.
 
     Args:
         model: An untrained GNN that returns logits (e.g. ``models.gnn.GCN``).
@@ -127,6 +135,7 @@ def train_gnn(
         batch_size: Molecules per mini-batch.
         max_epochs: Hard cap on epochs.
         patience: Epochs without val improvement before stopping.
+        min_epochs: First epoch eligible as the best epoch (1 = no guard).
 
     Returns:
         ``(model, best_epoch)`` with the best-val weights loaded (1-based epoch).
@@ -140,9 +149,16 @@ def train_gnn(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     best_loss, best_epoch, best_state = float("inf"), 0, None
+    if not 1 <= min_epochs <= max_epochs:
+        raise ValueError(f"min_epochs must be in [1, {max_epochs}], got {min_epochs}")
     for epoch in range(1, max_epochs + 1):
         _run_epoch(model, train_loader, loss_fn, optimizer)
+        # Run val even during warm-up: iterating a DataLoader draws from the
+        # global RNG, so skipping it would shift every later dropout mask and
+        # the guard would change the training trajectory, not just the pick.
         val_loss = _run_epoch(model, val_loader, loss_fn)
+        if epoch < min_epochs:
+            continue  # warm-up: these weights can't be picked or stop training
         if val_loss < best_loss:
             best_loss, best_epoch = val_loss, epoch
             best_state = copy.deepcopy(model.state_dict())

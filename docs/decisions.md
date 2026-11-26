@@ -663,3 +663,30 @@ model's protocol).
 `load_checkpoint` couldn't rebuild a flagged variant; a registered subclass round-trips for
 free); attention/set2set pooling (more than one change at once, so a result couldn't be pinned
 on removing size); dropping seed 4 (cherry-picking).
+
+### 2026-11-26 — Opt-in minimum-epoch guard for early stopping
+
+**Decision:** `train.train_gnn` takes `min_epochs` (default 1 = plain early stopping). Epochs
+before `min_epochs` are trained and still get a val pass, but they can't become the best epoch
+and can't trigger stopping. `run_gnn.py --min-epochs N` turns it on, stores `min_epochs` in each
+checkpoint, and appends `_min<N>` to the output names. Ran `run_gnn.py gin_mean --min-epochs 20`
+→ `predictions/gin_mean_min20.csv`, `checkpoints/gin_mean_min20_seed{0..4}.pt`.
+N = 20 was set to equal `patience` before looking at any scores. It wasn't tuned.
+**Result:** seeds 0–3 are bit-identical to `gin_mean` (best epochs 30/84/48/49, max prediction
+diff 0.0), so the guard only changes which epoch gets picked. Seed 4 moves from best epoch 3 to 24.
+Informal per-seed test ROC-AUC (throwaway script, not the official metric): sweet 0.80 ± 0.11
+→ 0.84 ± 0.04, bitter 0.81 ± 0.10 → 0.85 ± 0.04, umami 0.91 → 0.93, tasteless 0.82 → 0.83.
+Seed 4 sweet goes 0.59 → 0.82.
+**Implementation trap found:** the first version skipped the val pass during warm-up, and seeds
+0–3 changed too (best epochs 28/34/52/51). Iterating any `DataLoader` draws a base seed from
+torch's global RNG, so dropping val passes shifted every later dropout mask. The val pass now
+always runs, and the guard gates only the selection.
+**Why opt-in, not the new default:** turning it on everywhere changes the protocol for every
+GNN. GIN has a seed whose best epoch is 14, so `gin_seed{0..4}.pt` (which the demo, API and
+quoted sanity-check numbers use) would no longer be reproducible from the script. Making it the
+default is best done together with the planned one-thread GIN regeneration, once `evaluate.py`
+exists.
+**Rejected:** dropping seed 4 (cherry-picking); a larger `patience` (it only lets training run
+longer *after* the early minimum, and the epoch-3 weights would still win if val never beats
+them); choosing N on test AUC (that would make test a tuning set); skipping val passes during
+warm-up (changes the training trajectory, see above).
