@@ -24,7 +24,7 @@ several seeds. Accuracy is never the headline number.
 
 ## Status
 
-Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) and Phase 3 (GNNs) have trained models and are waiting on scoring. Phase 4 (explainability) has started: integrated-gradients atom attributions, drawn as heatmaps on the molecule, and sanity-checked against known taste pharmacophores — bitter and umami land on the right atoms, sweet does not (the sweet attributions track molecule size). Phase 5 (demo) has started: a FastAPI endpoint and a Gradio page return seed-averaged predictions and an attribution heatmap for any SMILES, and this README has the architecture diagram and limitations; the results table fills in once scoring exists. Live progress is
+Phase 0 (featurization) is mostly done, and Phase 1 (data) is done. Phase 2 (baselines) and Phase 3 (GNNs) have trained models and are waiting on scoring. Phase 4 (explainability) has started: integrated-gradients atom attributions, drawn as heatmaps on the molecule, and sanity-checked against known taste pharmacophores — bitter and umami land on the right atoms, sweet does not (the sweet attributions track molecule size). Phase 5 (demo) has started: a FastAPI endpoint and a Gradio page return seed-averaged predictions and an attribution heatmap for any SMILES, flagged when the molecule is unlike anything in the training set, and this README has the architecture diagram and limitations; the results table fills in once scoring exists. Live progress is
 tracked in [`docs/roadmap.md`](docs/roadmap.md).
 
 | Phase | Scope | State |
@@ -34,7 +34,7 @@ tracked in [`docs/roadmap.md`](docs/roadmap.md).
 | 2 | Fingerprint baselines | in progress (Random Forest and XGBoost trained on 5 scaffold splits, plus a random split for comparison; scoring next) |
 | 3 | GNNs | in progress (GCN, GIN and a bond-aware MPNN (GINE) trained on 5 scaffold splits with early stopping; per-seed weights saved for Phase 4; scoring pending) |
 | 4 | Explainability | in progress (integrated-gradients atom attributions for saved GNN checkpoints, rendered as RDKit heatmaps, averaged over 5 seeds and checked against known pharmacophores: bitter/umami pass, **sweet fails** — see `docs/decisions.md` 2026-11-25) |
-| 5 | Demo and write-up | in progress (FastAPI `POST /predict`: SMILES -> 5-seed GIN probabilities + averaged attribution PNG; Gradio page `uv run python -m tantalus.demo`; README architecture diagram and limitations written, results table waits on scoring) |
+| 5 | Demo and write-up | in progress (FastAPI `POST /predict`: SMILES -> 5-seed GIN probabilities + averaged attribution PNG; Gradio page `uv run python -m tantalus.demo`; both flag molecules outside the applicability domain; README architecture diagram and limitations written, results table waits on scoring) |
 
 ## Architecture
 
@@ -58,6 +58,7 @@ flowchart LR
     K --> I[integrated gradients<br/>seed-averaged atom heatmap]
     K --> J[predict.Ensemble]
     I --> J
+    C --> AD[domain.py<br/>nearest-neighbour Tanimoto] --> J
     J --> API[FastAPI POST /predict]
     J --> UI[Gradio page]
 ```
@@ -128,7 +129,8 @@ src/tantalus/train.py      GNN training loop: class-weighted BCE, early stopping
 scripts/explain_molecule.py Phase 4: one molecule + label -> attribution heatmap PNG from a saved checkpoint
 scripts/sanity_check_attributions.py Phase 4: known-compound panel vs. SMARTS pharmacophores, averaged over seeds
 src/tantalus/explain.py    Phase 4: integrated-gradients atom attributions (per label logit), seed averaging, heatmap drawing
-src/tantalus/predict.py    Phase 5: seed ensemble (5 GIN checkpoints) -> mean/std probabilities + averaged heatmap
+src/tantalus/predict.py    Phase 5: seed ensemble (5 GIN checkpoints) -> mean/std probabilities + averaged heatmap + domain check
+src/tantalus/domain.py     Phase 5: applicability domain (nearest-neighbour Morgan/Tanimoto similarity to molecules.csv)
 src/tantalus/api.py        Phase 5: FastAPI app (uv run uvicorn tantalus.api:app)
 src/tantalus/demo.py       Phase 5: Gradio page (uv run python -m tantalus.demo)
 notebooks/                 exploration, numbered by phase
@@ -152,8 +154,10 @@ docs/                      roadmap, design decisions (ADRs), learning log
   other tastes.
 - Umami and tasteless have only 6–10 positives in some scaffold val/test splits, so their
   per-seed AUCs are noisy.
-- There is no applicability-domain check. The demo gives confident outputs for molecules
-  unlike the training data (methane gets salty 0.79), and the seed std doesn't catch this.
+- The model is confident on molecules unlike its training data (methane gets salty 0.79), and
+  the seed std doesn't catch it. The API and demo now flag this with an applicability-domain
+  check (nearest-neighbour Morgan/Tanimoto similarity < 0.3 ⇒ out of domain), but the
+  probability itself is not corrected or withheld.
 - Sweet attributions fail the pharmacophore sanity check: they track molecule size, probably
   because GIN sums over atoms. Bitter and umami attributions land on the expected groups.
 - Heatmap colours are scaled per molecule, so intensities can't be compared across drawings.

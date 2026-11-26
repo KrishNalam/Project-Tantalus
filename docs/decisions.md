@@ -560,3 +560,37 @@ another machine would choose if someone removes the pin, and it's no more portab
 `use_deterministic_algorithms` alone (it guards against nondeterministic kernels, mostly a CUDA
 concern, but does not fix how a reduction is split across threads; not tested on its own here); an env var such as
 `OMP_NUM_THREADS` (easy to forget, and it lives outside the code).
+
+### 2026-11-26 — Flag out-of-domain molecules by nearest-neighbour Tanimoto similarity
+
+**Decision:** `domain.py` adds `ApplicabilityDomain`, built from `data/processed/molecules.csv`:
+it Morgan-fingerprints all 3728 molecules once and, for a query, returns the most similar
+reference molecule plus a boolean `in_domain` at a **0.3** Tanimoto threshold. `predict.Ensemble`
+builds one at construction and every `Prediction` carries the check; the API returns it as
+`applicability_domain` and the Gradio page prints the nearest training molecule, the similarity
+and a warning when the query is outside.
+**Why:** the demo's worst failure was silent: methane gets salty 0.79 with a small seed std,
+because all five models are equally sure about a molecule none of them has seen anything like.
+The seed spread measures *model* disagreement, not *data* coverage, so it cannot catch this. A
+nearest-neighbour fingerprint-similarity check is the standard, cheap applicability-domain test
+and needs no new dependency: the fingerprints are already in `featurize.py`.
+**Threshold, measured not assumed:** scaffold-test molecules from seed 0 reach a median 0.62
+similarity to their train split, 5th percentile 0.27. At 0.3 the flag fires on ~7% of molecules
+the model is actually evaluated on, while methane (0.04) and cisplatin (0.11) are flagged. 0.4
+(the common literature default) flagged 18% of legitimate test molecules, which would train
+users to ignore the warning.
+**Reference set is the whole merged table**, not one seed's train split: the demo ensembles five
+models whose scaffold splits differ, so a molecule held out by one seed was trained on by the
+other four. The union is the chemical space the ensemble as a whole has seen. (For scoring a
+single seed, the correct reference would be that seed's train split only.)
+**Cost:** about 4 s to fingerprint the reference set at startup, then one 3728x2048 matrix
+product (~1 ms) per query. Implemented as a matrix product rather than RDKit's
+`BulkTanimotoSimilarity` to stay in numpy and avoid converting bit vectors back to RDKit objects.
+**Behaviour unchanged otherwise:** the probability is still returned as-is, not suppressed or
+widened. Flagging is honest; silently withholding an answer would hide which molecules are hard.
+**Rejected:** a bounding box / PCA-distance domain on descriptors (another featurization to
+justify, and worse on sparse binary fingerprints); mean similarity to the k nearest neighbours
+(smoother, but one near-duplicate is exactly the evidence we want, and max is easier to explain);
+conformal prediction or an explicit uncertainty model (the principled answer for calibrated
+intervals, but a project of its own and it needs the scoring code first); training a one-class
+novelty detector (a second model to validate for a check the fingerprints already give).

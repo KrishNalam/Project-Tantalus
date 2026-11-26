@@ -5,7 +5,10 @@ Run locally:
 
 Then ``POST /predict`` with ``{"smiles": "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"}``.
 The heatmap comes back base64-encoded inside the JSON, so one request gives
-the client everything it needs to render a result.
+the client everything it needs to render a result. The response also reports
+an applicability-domain check: the nearest training molecule by Tanimoto
+similarity and whether the query is close enough for the prediction to be
+trusted.
 """
 
 import base64
@@ -32,6 +35,14 @@ class LabelScore(BaseModel):
     validated: bool  # False for salty/sour: not scored on the scaffold split
 
 
+class DomainInfo(BaseModel):
+    """How close the query is to the training data (see ``tantalus.domain``)."""
+
+    nearest_similarity: float
+    nearest_smiles: str
+    in_domain: bool
+
+
 class PredictResponse(BaseModel):
     canonical_smiles: str
     model: str
@@ -39,6 +50,7 @@ class PredictResponse(BaseModel):
     explained_label: str
     attribution_png_base64: str
     attribution_delta: float
+    applicability_domain: DomainInfo
 
 
 @asynccontextmanager
@@ -83,4 +95,9 @@ def predict(body: PredictRequest, request: Request) -> PredictResponse:
         explained_label=result.explained_label,
         attribution_png_base64=base64.b64encode(result.attribution_png).decode(),
         attribution_delta=result.attribution_delta,
+        applicability_domain=DomainInfo(
+            nearest_similarity=result.domain.nearest_similarity,
+            nearest_smiles=result.domain.nearest_smiles,
+            in_domain=result.domain.in_domain,
+        ),
     )

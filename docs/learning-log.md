@@ -273,3 +273,11 @@ TODO:
 ### Training the same GNN with the same seed on 1, 2 and 4 CPU threads gave different weights. Why does the number of threads change a floating-point result, and why does pinning the thread count (rather than only setting seeds) make training reproducible?
 
 TODO:
+
+### The applicability-domain check flags a molecule when its nearest training neighbour has Tanimoto similarity below 0.3. Why does the *seed standard deviation* of the ensemble not already catch out-of-domain molecules, and what kinds of uncertainty are these two numbers measuring?
+
+TODO:
+
+### `domain.py` computes Tanimoto similarity against the whole 3728-molecule table with one matrix product (`ref @ query`), using the identity `|A & B| = A . B` for bit vectors. Why does `|A | B| = |A| + |B| - |A & B|`, and what would change if the fingerprints were counts instead of bits?
+
+TODO:

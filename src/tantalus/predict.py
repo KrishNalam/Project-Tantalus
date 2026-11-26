@@ -7,6 +7,11 @@ The five per-seed checkpoints are used together: probabilities are averaged
 and their spread reported, and attributions are averaged with
 ``explain.average_attributions``. Phase 4 showed single-seed attributions
 disagree a lot, so the demo never shows one seed on its own.
+
+Every prediction also carries an applicability-domain check
+(:mod:`tantalus.domain`): the seed spread says how much the models disagree,
+which is not the same as whether the molecule resembles anything they were
+trained on.
 """
 
 from dataclasses import dataclass
@@ -17,6 +22,7 @@ from torch import nn
 from torch_geometric.data import Batch
 
 from tantalus.data import LABELS, PROCESSED_DIR
+from tantalus.domain import ApplicabilityDomain, DomainCheck
 from tantalus.explain import average_attributions, draw_attributions
 from tantalus.featurize import canonicalize, smiles_to_graph
 from tantalus.models.gnn import load_checkpoint
@@ -38,6 +44,7 @@ class Prediction:
     explained_label: str
     attribution_png: bytes
     attribution_delta: float
+    domain: DomainCheck
 
 
 class Ensemble:
@@ -48,14 +55,21 @@ class Ensemble:
         model: str = "gin",
         seeds: tuple[int, ...] = (0, 1, 2, 3, 4),
         checkpoint_dir: Path = CHECKPOINT_DIR,
+        domain: ApplicabilityDomain | None = None,
     ) -> None:
         """Load ``<checkpoint_dir>/<model>_seed<k>.pt`` for every seed.
 
+        Also builds the applicability-domain reference set from
+        ``molecules.csv`` (pass ``domain`` to reuse one), so every prediction
+        can report how close the query is to the training data.
+
         Raises:
-            FileNotFoundError: If a checkpoint is missing (run
-                ``scripts/run_gnn.py <model>`` first).
+            FileNotFoundError: If a checkpoint or ``molecules.csv`` is missing
+                (run ``scripts/run_gnn.py <model>`` / ``scripts/build_data.py``
+                first).
         """
         self.model_name = model
+        self.domain = domain or ApplicabilityDomain.from_dataset()
         self.models: list[nn.Module] = [
             load_checkpoint(checkpoint_dir / f"{model}_seed{s}.pt")[0] for s in seeds
         ]
@@ -106,4 +120,7 @@ class Ensemble:
             self.models, canonical, label, steps
         )
         png = draw_attributions(canonical, scores)
-        return Prediction(canonical, mean, std, label, png, max_delta)
+        check = self.domain.check(canonical)
+        if check is None:  # unreachable: the SMILES already parsed above
+            raise RuntimeError(f"fingerprint failed for canonical {canonical!r}")
+        return Prediction(canonical, mean, std, label, png, max_delta, check)

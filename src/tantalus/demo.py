@@ -27,14 +27,17 @@ EXAMPLES = [
     ["O=C1NS(=O)(=O)c2ccccc21", "sweet"],  # saccharin
     ["NC(CCC(=O)O)C(=O)O", AUTO_LABEL],  # glutamic acid (umami)
     ["[Na+].[Cl-]", AUTO_LABEL],  # table salt
+    ["C", AUTO_LABEL],  # methane: out of domain, confidently wrong
 ]
 
 NOTE = (
     "**How to read this.** Probabilities are averaged over 5 GIN models trained on "
     "different scaffold splits; *seed std* is how much they disagree. Salty and sour "
     "are marked unvalidated: too few examples to score them on the scaffold split. "
-    "The model has no out-of-domain check, so it can be confidently wrong on molecules "
-    "unlike its training data. Red atoms push towards the explained label, blue away; "
+    "*Applicability domain* is the Tanimoto similarity to the nearest training "
+    "molecule; below 0.3 the prediction is extrapolation and is flagged, because the "
+    "model is confident on molecules unlike anything it has seen. Red atoms push "
+    "towards the explained label, blue away; "
     "colours are scaled per molecule. Sweet heatmaps tend to track molecule size "
     "rather than chemistry (a known limitation, see docs/decisions.md)."
 )
@@ -70,10 +73,19 @@ def run(smiles: str, label: str) -> tuple[str, pd.DataFrame, Image.Image, str]:
         }
     ).sort_values("probability", ascending=False)
     image = Image.open(io.BytesIO(result.attribution_png))
+    domain = result.domain
+    verdict = (
+        "inside the applicability domain"
+        if domain.in_domain
+        else "⚠️ **outside the applicability domain** — treat these numbers as "
+        "extrapolation"
+    )
     caption = (
         f"Heatmap explains **{result.explained_label}** "
         f"(p = {result.mean[result.explained_label]:.2f}). "
-        f"Integrated-gradients completeness gap: {result.attribution_delta:.2f}."
+        f"Integrated-gradients completeness gap: {result.attribution_delta:.2f}.\n\n"
+        f"Nearest training molecule: `{domain.nearest_smiles}` "
+        f"(Tanimoto {domain.nearest_similarity:.2f}) — {verdict}."
     )
     return result.canonical_smiles, table, image, caption
 
