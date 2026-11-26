@@ -614,3 +614,25 @@ says nothing about what the model trained on. This differs on purpose from the d
 **Rejected:** a per-label breakdown (umami/tasteless have 6–10 test positives, too few for a
 stable percentile); a histogram plot (a table is enough to quote and diff; plots belong in a
 notebook if wanted).
+
+### 2026-11-26 — Regenerate GCN/GINE under one-thread training; keep the GIN checkpoints
+
+**Decision:** reran `scripts/run_gnn.py gcn` and `gine` under `train.make_reproducible`, which
+replaced `predictions/{gcn,gine}.csv` and created `checkpoints/{gcn,gine}_seed{0..4}.pt` (none
+existed). Reloading seed 0 of each reproduces its CSV to < 2e-7. The five GIN checkpoints and
+`gin.csv` were **not** regenerated.
+**Why:** a comparison table should only contain runs that can be reproduced, and Phase 4 code
+(IG, heatmaps) can now run on all three architectures. The rerun also measured how big
+thread-count noise is: pooled test ROC-AUC (informal check, not the official metric) moved
+GCN 0.835/0.835/0.946/0.805 → 0.838/0.835/0.947/0.808 (sweet/bitter/umami/tasteless; same best
+epochs) but GINE 0.81/0.83/0.935/0.847 → 0.836/0.85/0.932/0.849 (best epochs changed). A
+~0.025 shift from thread count alone is as large as the GIN-vs-GINE gap reported earlier, so the
+earlier remark "bond features did not help sweet/bitter" was within noise. Only per-seed mean ±
+std from `evaluate.py` can settle it.
+**Why GIN is kept as is:** the demo, the API and the Phase 4 sanity-check numbers (ADR
+2026-11-25) are all quoted from `gin_seed{0..4}.pt`; replacing them would silently change
+published numbers. It stays the one pre-fix model, documented in STATUS/README.
+**Rejected:** rerunning GIN too (cleaner, but invalidates every quoted Phase 4/5 number for a
+difference at noise level; worth doing together with the mean-pooling GIN experiment, when the
+sanity check is rerun anyway); leaving GCN/GINE without checkpoints (they couldn't be explained
+or reloaded).

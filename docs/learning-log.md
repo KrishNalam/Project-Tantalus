@@ -289,3 +289,7 @@ TODO:
 ### `split_similarity` compares each test molecule against that seed's *train* split only, not the whole dataset. What would go wrong (and which way would the numbers move) if it used the whole `molecules.csv` instead?
 
 TODO:
+
+### Retraining GINE with 1 CPU thread instead of 2 (same seed, same data) moved its pooled sweet test ROC-AUC from 0.81 to 0.84. Why can the number of threads change floating-point results at all, and what does a 0.03 swing from this alone imply about how to compare two architectures?
+
+TODO:

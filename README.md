@@ -166,6 +166,8 @@ docs/                      roadmap, design decisions (ADRs), learning log
 - Sweet attributions fail the pharmacophore sanity check: they track molecule size, probably
   because GIN sums over atoms. Bitter and umami attributions land on the expected groups.
 - Heatmap colours are scaled per molecule, so intensities can't be compared across drawings.
-- The current GNN checkpoints and predictions were trained before training was pinned to one
-  CPU thread, so a fresh `run_gnn.py` run reproduces itself exactly but differs slightly from
-  them.
+- GCN and GINE checkpoints/predictions come from the reproducible one-thread training. The
+  five GIN checkpoints (used by the demo, API and attribution sanity check) predate it, so a
+  fresh `run_gnn.py gin` reproduces itself exactly but differs slightly from them. Thread
+  count alone moved GINE's sweet test AUC by ~0.03, so single-run architecture gaps that small
+  are noise.
