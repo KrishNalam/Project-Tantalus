@@ -293,3 +293,11 @@ TODO:
 ### Retraining GINE with 1 CPU thread instead of 2 (same seed, same data) moved its pooled sweet test ROC-AUC from 0.81 to 0.84. Why can the number of threads change floating-point results at all, and what does a 0.03 swing from this alone imply about how to compare two architectures?
 
 TODO:
+
+### Switching GIN from sum pooling to mean pooling cut the sweet attribution sums from 30–74 to 7–9 and stopped them tracking atom count. Why does sum pooling make a molecule's score (and its integrated-gradients attributions) grow with size, and what can sum pooling represent that mean pooling cannot?
+
+TODO:
+
+### One mean-pooling GIN seed hit its best validation loss at epoch 3 and stopped there (patience 20), giving a much worse model. How can early stopping lock in an undertrained model, and what are two ways to guard against it?
+
+TODO:

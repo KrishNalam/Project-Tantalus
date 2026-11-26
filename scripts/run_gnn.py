@@ -5,6 +5,7 @@ Usage:
     uv run python scripts/run_gnn.py gcn
     uv run python scripts/run_gnn.py gin
     uv run python scripts/run_gnn.py gine   # bond-aware MPNN
+    uv run python scripts/run_gnn.py gin_mean   # GIN with mean pooling
     uv run python scripts/run_gnn.py gcn --split random
 
 Same output format as ``scripts/run_baseline.py``, so ``evaluate.py`` scores

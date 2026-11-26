@@ -636,3 +636,30 @@ published numbers. It stays the one pre-fix model, documented in STATUS/README.
 difference at noise level; worth doing together with the mean-pooling GIN experiment, when the
 sanity check is rerun anyway); leaving GCN/GINE without checkpoints (they couldn't be explained
 or reloaded).
+
+### 2026-11-26 — Mean-pooling GIN as a controlled test of the sweet size artefact
+
+**Decision:** added `pooling` (`"sum"` default | `"mean"`) to `models/gnn.GIN` (GINE inherits it)
+and a `GINMean` subclass registered as `gin_mean`, which differs from GIN **only** in the
+readout. Trained it with `run_gnn.py gin_mean` (one thread, seeds 0–4 scaffold splits →
+`predictions/gin_mean.csv`, `checkpoints/gin_mean_seed{0..4}.pt`) and reran
+`sanity_check_attributions.py --model gin_mean`, which now writes
+`attribution_sanity_<model>.csv` for non-GIN models so the GIN numbers aren't overwritten.
+Refactor check: `gin_seed0.pt` still reproduces `gin.csv` (diff 1e-9).
+**Result:** the size artefact is the readout. Sweet IG score sums fall from 39/30/62/74
+(saccharin/acesulfame/aspartame/sucrose, GIN) to 7.2/6.6/8.1/8.8. Precision at k: saccharin
+0.00 → 0.50 (chance 0.33), acesulfame 0.00 → 0.50 (0.40), aspartame 0.25 → 0.25 (0.19), sucrose
+0.00 → 0.00 (0.35). Bitter/umami still pass (denatonium 1.00, MSG 0.83, caffeine 0.50, quinine
+0.25, same as GIN). So sweet moves from "fails" to "weakly above chance on 3 of 4", not a pass.
+Saturated (exactly 0/1) test probabilities fall from 0.29% to 0.08%.
+**Caveat:** seed 4 stopped at best epoch 3 (sweet test AUC 0.59, bitter 0.62 vs. 0.79–0.89 for
+seeds 0–3), so the informal per-seed mean sweet test ROC-AUC is 0.80 ± 0.12 vs. GIN 0.86 ± 0.05.
+An early val-loss minimum plus patience 20 can lock in an undertrained model; that seed is also
+in the attribution average. Not acted on here (changing patience/min-epochs would change every
+model's protocol).
+**Why not switch the demo:** which GIN to serve is an accuracy question that needs the owner's
+`evaluate.py`; the demo, API and the 2026-11-25 numbers stay on `gin_seed{0..4}`.
+**Rejected:** a `pooling` CLI flag on `run_gnn.py` (checkpoints store only the model name, so
+`load_checkpoint` couldn't rebuild a flagged variant; a registered subclass round-trips for
+free); attention/set2set pooling (more than one change at once, so a result couldn't be pinned
+on removing size); dropping seed 4 (cherry-picking).

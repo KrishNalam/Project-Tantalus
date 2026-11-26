@@ -33,7 +33,7 @@ tracked in [`docs/roadmap.md`](docs/roadmap.md).
 | 1 | Data loading, cleaning, merging, scaffold split | done (3728 molecules, scaffold splits for 5 seeds, class balance reported) |
 | 2 | Fingerprint baselines | in progress (Random Forest and XGBoost trained on 5 scaffold splits, plus a random split for comparison; scoring next) |
 | 3 | GNNs | in progress (GCN, GIN and a bond-aware MPNN (GINE) trained on 5 scaffold splits with early stopping; per-seed weights saved for Phase 4; scoring pending) |
-| 4 | Explainability | in progress (integrated-gradients atom attributions for saved GNN checkpoints, rendered as RDKit heatmaps, averaged over 5 seeds and checked against known pharmacophores: bitter/umami pass, **sweet fails** — see `docs/decisions.md` 2026-11-25) |
+| 4 | Explainability | in progress (integrated-gradients atom attributions for saved GNN checkpoints, rendered as RDKit heatmaps, averaged over 5 seeds and checked against known pharmacophores: bitter/umami pass, **sweet fails** — see `docs/decisions.md` 2026-11-25; a mean-pooling GIN removes the size artefact but only partly fixes sweet, 2026-11-26) |
 | 5 | Demo and write-up | in progress (FastAPI `POST /predict`: SMILES -> 5-seed GIN probabilities + averaged attribution PNG; Gradio page `uv run python -m tantalus.demo`; both flag molecules outside the applicability domain; README architecture diagram and limitations written, results table waits on scoring) |
 
 ## Architecture
@@ -83,6 +83,7 @@ chose the early-stopping epoch.
 | GCN | graph (atoms) | pending | pending |
 | GIN | graph (atoms) | pending | pending |
 | GINE | graph (atoms + bonds) | pending | pending |
+| GIN, mean pooling (ablation) | graph (atoms) | pending | pending |
 
 All predictions exist in `data/processed/predictions/`; the table is filled once the
 evaluation code (`evaluate.py`) is written.
@@ -163,8 +164,11 @@ docs/                      roadmap, design decisions (ADRs), learning log
   the seed std doesn't catch it. The API and demo now flag this with an applicability-domain
   check (nearest-neighbour Morgan/Tanimoto similarity < 0.3 ⇒ out of domain), but the
   probability itself is not corrected or withheld.
-- Sweet attributions fail the pharmacophore sanity check: they track molecule size, probably
-  because GIN sums over atoms. Bitter and umami attributions land on the expected groups.
+- Sweet attributions fail the pharmacophore sanity check: they track molecule size because GIN
+  sums over atoms. A mean-pooling GIN (`gin_mean`) removes the size effect (saccharin and
+  acesulfame move from 0.00 to 0.50 precision at k, above chance) but sucrose still scores 0.00,
+  and one of its five seeds stopped at epoch 3 with sweet test AUC 0.59. The demo keeps the
+  sum-pooling GIN until scoring says which is better. Bitter and umami land on the expected groups.
 - Heatmap colours are scaled per molecule, so intensities can't be compared across drawings.
 - GCN and GINE checkpoints/predictions come from the reproducible one-thread training. The
   five GIN checkpoints (used by the demo, API and attribution sanity check) predate it, so a

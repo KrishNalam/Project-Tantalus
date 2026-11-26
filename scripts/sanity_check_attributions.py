@@ -10,7 +10,8 @@ Usage:
     uv run python scripts/sanity_check_attributions.py
     uv run python scripts/sanity_check_attributions.py --model gin --steps 256
 
-Writes ``data/processed/attribution_sanity.csv`` and one mean-attribution
+Writes ``data/processed/attribution_sanity.csv`` (``attribution_sanity_<model>.csv``
+for any model other than ``gin``, so runs don't overwrite each other) and one mean-attribution
 heatmap per molecule under ``data/processed/heatmaps/sanity/`` (gitignored,
 like all of ``data/``).
 
@@ -179,7 +180,8 @@ def main() -> None:
         ).write_bytes(png)
 
     report = pd.DataFrame(rows)
-    path = PROCESSED_DIR / "attribution_sanity.csv"
+    suffix = "" if args.model == "gin" else f"_{args.model}"
+    path = PROCESSED_DIR / f"attribution_sanity{suffix}.csv"
     report.to_csv(path, index=False)
     print(report.to_string(index=False))
     print(f"\nwrote {path} and {len(rows)} heatmaps to {out_dir}")

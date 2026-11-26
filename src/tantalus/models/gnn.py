@@ -23,6 +23,9 @@ from torch_geometric.nn import (
 from tantalus.data import LABELS
 from tantalus.featurize import ATOM_FEATURE_DIM, BOND_FEATURE_DIM
 
+# Graph readouts: atom states (num_atoms, d) + batch index -> (num_graphs, d).
+POOLINGS = {"sum": global_add_pool, "mean": global_mean_pool}
+
 
 class GCN(nn.Module):
     """Graph Convolutional Network (Kipf & Welling, 2017) with a graph-level head.
@@ -93,7 +96,8 @@ class GIN(nn.Module):
     which is what makes GIN as expressive as the Weisfeiler-Lehman test.
     ``eps`` is fixed at 0 ("GIN-0"). Width, depth, dropout and head match
     ``GCN`` so the two models differ only in aggregation and pooling. Bond
-    features are ignored, as in ``GCN``.
+    features are ignored, as in ``GCN``. ``pooling="mean"`` swaps the readout
+    for an average (see ``GINMean``).
     """
 
     def __init__(
@@ -103,6 +107,7 @@ class GIN(nn.Module):
         num_layers: int = 3,
         num_labels: int = len(LABELS),
         dropout: float = 0.2,
+        pooling: str = "sum",
     ) -> None:
         """Build the layers.
 
@@ -112,13 +117,18 @@ class GIN(nn.Module):
             num_layers: Message-passing layers (radius of each atom's view).
             num_labels: Output logits, one per taste label.
             dropout: Dropout probability after each layer (training only).
+            pooling: Graph readout, ``"sum"`` (GIN paper) or ``"mean"``.
 
         Raises:
-            ValueError: If ``num_layers`` is less than 1.
+            ValueError: If ``num_layers`` is less than 1 or ``pooling`` is
+                unknown.
         """
         super().__init__()
         if num_layers < 1:
             raise ValueError("num_layers must be at least 1")
+        if pooling not in POOLINGS:
+            raise ValueError(f"pooling must be one of {sorted(POOLINGS)}")
+        self.pool = POOLINGS[pooling]
         dims = [in_dim] + [hidden_dim] * num_layers
         self.convs = nn.ModuleList(
             GINConv(
@@ -145,8 +155,24 @@ class GIN(nn.Module):
         h = batch.x
         for conv in self.convs:
             h = self.dropout(torch.relu(conv(h, batch.edge_index)))
-        pooled = global_add_pool(h, batch.batch)
+        pooled = self.pool(h, batch.batch)
         return self.head(pooled)
+
+
+class GINMean(GIN):
+    """``GIN`` with mean pooling instead of sum pooling: one change, nothing else.
+
+    A controlled experiment, not a new architecture. Sum pooling makes the
+    molecule vector grow with atom count, and the Phase 4 sanity check found
+    sweet attributions that track molecule size (ADR 2026-11-25). Averaging
+    removes size from the readout, so if the artefact disappears here, the
+    readout was the cause. The trade-off: mean pooling can no longer count
+    (a molecule and its doubled copy pool to the same vector).
+    """
+
+    def __init__(self, **kwargs) -> None:
+        """Build a ``GIN`` with ``pooling="mean"``; other kwargs pass through."""
+        super().__init__(pooling="mean", **kwargs)
 
 
 class GINE(GIN):
@@ -207,11 +233,16 @@ class GINE(GIN):
         h = batch.x
         for conv in self.convs:
             h = self.dropout(torch.relu(conv(h, batch.edge_index, batch.edge_attr)))
-        pooled = global_add_pool(h, batch.batch)
+        pooled = self.pool(h, batch.batch)
         return self.head(pooled)
 
 
-MODELS: dict[str, type[nn.Module]] = {"gcn": GCN, "gin": GIN, "gine": GINE}
+MODELS: dict[str, type[nn.Module]] = {
+    "gcn": GCN,
+    "gin": GIN,
+    "gin_mean": GINMean,
+    "gine": GINE,
+}
 
 
 def load_checkpoint(path: Path) -> tuple[nn.Module, dict]:
