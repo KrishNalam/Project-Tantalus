@@ -120,6 +120,7 @@ uv run pytest
 ```
 scripts/download_data.py   pinned dataset downloads (ChemTastesDB, BitterDB)
 scripts/build_data.py      Phase 1 pipeline: merged table, scaffold (+ comparison random) splits, class balance
+scripts/report_split_similarity.py data quality: nearest-train similarity of val/test, scaffold vs. random split
 scripts/run_baseline.py    Phase 2: RF / XGBoost baselines, val/test predictions per seed
 scripts/run_gnn.py         Phase 3: GNN training per seed, same prediction format as the baselines; saves per-seed checkpoints
 src/tantalus/featurize.py  SMILES -> canonical SMILES, PyG graphs, Morgan fingerprints
@@ -147,6 +148,10 @@ docs/                      roadmap, design decisions (ADRs), learning log
 
 - The scaffold split can't place acyclic or plain-benzene molecules in the test set. These two
   scaffold groups make up about 35% of the data.
+- The random split is much easier than the scaffold split: held-out molecules have a median
+  nearest-train Tanimoto similarity of 0.72 under the random split vs. 0.58 under the scaffold
+  split (test, mean over seeds 0–4; `scripts/report_split_similarity.py`). Expect random-split
+  scores to be higher for that reason alone.
 - Salty and sour have too few molecules to evaluate on the scaffold split. They are reported only
   on a random split, as a deliberate side comparison.
 - SMILES are stereo-free, so enantiomers count as one molecule.

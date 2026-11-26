@@ -281,3 +281,11 @@ TODO:
 ### `domain.py` computes Tanimoto similarity against the whole 3728-molecule table with one matrix product (`ref @ query`), using the identity `|A & B| = A . B` for bit vectors. Why does `|A | B| = |A| + |B| - |A & B|`, and what would change if the fingerprints were counts instead of bits?
 
 TODO:
+
+### Under the random split, test molecules have a median nearest-train Tanimoto similarity of 0.72; under the scaffold split, 0.58. Why does a scaffold split push held-out molecules further from train, and why does that make random-split ROC-AUC an optimistic estimate of performance on new chemistry?
+
+TODO:
+
+### `split_similarity` compares each test molecule against that seed's *train* split only, not the whole dataset. What would go wrong (and which way would the numbers move) if it used the whole `molecules.csv` instead?
+
+TODO:

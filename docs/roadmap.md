@@ -20,7 +20,7 @@ canonicalization, atom features, fingerprints, and Tanimoto similarity.
 - [x] Canonicalize, dedup across sources, resolve label conflicts, drop invalids (documented) (`assign_labels` → `strip_salts` → `merge_duplicates`; every drop in `dropped.csv`, every change in `salt_log.csv` / `merge_log.csv`)
 - [x] Merge into one table: canonical SMILES + multi-hot labels (`data.build_dataset` → `data/processed/molecules.csv`, 3728 molecules)
 - [x] Bemis–Murcko scaffold split implemented (`data.murcko_scaffold` + `data.scaffold_split`; run on the merged table for seeds 0–4 by `data.write_splits` → `data/processed/splits.csv`)
-- [x] Class balance per split reported (`scripts/build_data.py` → `data/processed/split_balance.csv`; min positives over seeds 0–4 in val/test: sweet 103/95, bitter 147/184, umami 8/9, tasteless 10/6, sour 0/2, salty 0/0, see ADR 2026-11-23)
+- [x] Class balance per split reported (`scripts/build_data.py` → `data/processed/split_balance.csv`; min positives over seeds 0–4 in val/test: sweet 103/95, bitter 147/184, umami 8/9, tasteless 10/6, sour 0/2, salty 0/0, see ADR 2026-11-23). Split difficulty measured too: median nearest-train Tanimoto of test molecules is 0.58 (scaffold) vs. 0.72 (random) (`scripts/report_split_similarity.py` → `split_similarity.csv`, ADR 2026-11-26)
 
 Done when: a single processed table + scaffold split exists with every drop documented
 and class balance reported.

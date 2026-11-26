@@ -594,3 +594,23 @@ justify, and worse on sparse binary fingerprints); mean similarity to the k near
 conformal prediction or an explicit uncertainty model (the principled answer for calibrated
 intervals, but a project of its own and it needs the scoring code first); training a one-class
 novelty detector (a second model to validate for a check the fingerprints already give).
+
+### 2026-11-26 — Measure held-out similarity to each seed's own train split
+
+**Decision:** `domain.split_similarity` + `scripts/report_split_similarity.py` compute, for each
+split method (scaffold, random) and seed 0–4, the nearest-neighbour Morgan/Tanimoto similarity
+of every val/test molecule to **that seed's train molecules only**, and save median / p05 / p25 /
+mean / fraction below the 0.3 out-of-domain threshold to `data/processed/split_similarity.csv`.
+Result (test, mean over seeds): scaffold median 0.58 (p05 0.28, 7.3% below 0.3); random median
+0.72 (p05 0.34, 4.0% below 0.3).
+**Why:** the claim "the scaffold split is harder than a random split" was so far only asserted.
+This puts a number on it, so random-split scores (the only place salty/sour are scored) can be
+read with the right discount, and it re-checks the 0.3 threshold on all five seeds instead of
+seed 0 only (5–9% of scaffold-test molecules flagged on every seed).
+**Reference = own train split, not `molecules.csv`:** comparing against the whole table would
+match each molecule against itself (similarity 1.0) and against other held-out molecules, which
+says nothing about what the model trained on. This differs on purpose from the demo's
+`ApplicabilityDomain` (whole table, because the 5-seed ensemble has collectively seen it).
+**Rejected:** a per-label breakdown (umami/tasteless have 6–10 test positives, too few for a
+stable percentile); a histogram plot (a table is enough to quote and diff; plots belong in a
+notebook if wanted).

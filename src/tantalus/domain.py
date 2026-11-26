@@ -65,6 +65,74 @@ def tanimoto_to_reference(fingerprint: np.ndarray, reference: np.ndarray) -> np.
     )
 
 
+def nearest_similarities(queries: np.ndarray, reference: np.ndarray) -> np.ndarray:
+    """Nearest-neighbour Tanimoto similarity of each query row to ``reference``.
+
+    The batched version of :func:`tanimoto_to_reference`: one matrix product
+    gives the full ``(n_queries, n_reference)`` intersection matrix, and only
+    the row maxima are kept.
+
+    Args:
+        queries: Bit matrix, shape ``(n_queries, n_bits)``.
+        reference: Bit matrix, shape ``(n_reference, n_bits)``.
+
+    Returns:
+        Max similarity per query, shape ``(n_queries,)``.
+    """
+    q = queries.astype(np.float32)
+    ref = reference.astype(np.float32)
+    intersection = q @ ref.T
+    union = q.sum(axis=1)[:, None] + ref.sum(axis=1)[None, :] - intersection
+    similarity = np.divide(
+        intersection, union, out=np.zeros_like(intersection), where=union > 0
+    )
+    return similarity.max(axis=1)
+
+
+def split_similarity(
+    fingerprints: np.ndarray,
+    splits: pd.DataFrame,
+    threshold: float = SIMILARITY_THRESHOLD,
+) -> pd.DataFrame:
+    """How far each held-out split sits from its own train split.
+
+    For every seed column, each val/test molecule is compared against that
+    seed's **train** molecules only (never the whole table, which would count
+    the molecule itself as its own neighbour). A scaffold split should push
+    held-out molecules further from train than a random split does; that gap
+    is the reason random-split scores look better.
+
+    Args:
+        fingerprints: One bit vector per row of ``splits``, same order.
+        splits: Saved split table (``canonical_smiles`` plus ``seed_<k>``
+            columns of ``"train"`` / ``"val"`` / ``"test"``).
+        threshold: Out-of-domain cut-off, reported as the fraction below it.
+
+    Returns:
+        One row per (seed, split) with ``n``, ``median``, ``p05``, ``p25``,
+        ``mean`` similarity and ``frac_below_threshold``.
+    """
+    rows = []
+    for column in [c for c in splits.columns if c.startswith("seed_")]:
+        assignment = splits[column].to_numpy()
+        train = fingerprints[assignment == "train"]
+        for split in ("val", "test"):
+            sims = nearest_similarities(fingerprints[assignment == split], train)
+            rows.append(
+                {
+                    "seed": int(column.removeprefix("seed_")),
+                    "split": split,
+                    "n": len(sims),
+                    "median": float(np.median(sims)),
+                    "p05": float(np.percentile(sims, 5)),
+                    "p25": float(np.percentile(sims, 25)),
+                    "mean": float(sims.mean()),
+                    "frac_below_threshold": float((sims < threshold).mean()),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
 class ApplicabilityDomain:
     """Nearest-neighbour similarity check against the processed dataset."""
 
