@@ -168,7 +168,9 @@ docs/                      roadmap, design decisions (ADRs), learning log
 - Sweet attributions fail the pharmacophore sanity check: they track molecule size because GIN
   sums over atoms. A mean-pooling GIN (`gin_mean`) removes the size effect (saccharin and
   acesulfame move from 0.00 to 0.50 precision at k, above chance) but sucrose still scores 0.00,
-  and one of its five seeds stopped at epoch 3 with sweet test AUC 0.59. The demo keeps the
+  and one of its five seeds stopped at epoch 3 with sweet test AUC 0.59. Rerunning the check
+  with that seed fixed by a minimum-epoch guard (`gin_mean_min20`) changes nothing except sucrose
+  0.00 → 0.125, still below chance, so the weak sweet localisation is not that seed's fault. The demo keeps the
   sum-pooling GIN until scoring says which is better. Bitter and umami land on the expected groups.
 - Heatmap colours are scaled per molecule, so intensities can't be compared across drawings.
 - GCN and GINE checkpoints/predictions come from the reproducible one-thread training. The

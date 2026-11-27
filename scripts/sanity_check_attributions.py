@@ -9,6 +9,7 @@ that part more than chance would predict.
 Usage:
     uv run python scripts/sanity_check_attributions.py
     uv run python scripts/sanity_check_attributions.py --model gin --steps 256
+    uv run python scripts/sanity_check_attributions.py --model gin_mean_min20
 
 Writes ``data/processed/attribution_sanity.csv`` (``attribution_sanity_<model>.csv``
 for any model other than ``gin``, so runs don't overwrite each other) and one mean-attribution
@@ -119,7 +120,12 @@ def motif_atoms(smiles: str, patterns: Sequence[str]) -> set[int]:
 def main() -> None:
     """Explain every panel molecule with every seed, score the motif overlap."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--model", default="gin")
+    parser.add_argument(
+        "--model",
+        default="gin",
+        help="checkpoint prefix, i.e. a run_gnn.py output name such as gin, gin_mean "
+        "or gin_mean_min20 (loads <model>_seed<k>.pt)",
+    )
     parser.add_argument("--steps", type=int, default=128)
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     args = parser.parse_args()
