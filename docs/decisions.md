@@ -690,3 +690,24 @@ exists.
 longer *after* the early minimum, and the epoch-3 weights would still win if val never beats
 them); choosing N on test AUC (that would make test a tuning set); skipping val passes during
 warm-up (changes the training trajectory, see above).
+
+### 2026-11-27 — Regenerate GIN under one-thread training, guard off
+
+**Decision:** carried out the rerun deferred by the ADR above: `run_gnn.py gin` under
+`train.make_reproducible`, replacing `predictions/gin.csv` and `checkpoints/gin_seed{0..4}.pt`,
+then reran `sanity_check_attributions.py` on them. The minimum-epoch guard stays off
+(`min_epochs=1`), the same protocol as GCN and GINE. The old two-thread outputs are kept
+locally in `data/processed/legacy_2thread/` (gitignored).
+**Why:** GIN was the only GNN left on the old thread-dependent setup, so the comparison
+`evaluate.py` will produce would have mixed two protocols and a 0.02 architecture gap would be
+unreadable. Confounder removed before the numbers exist rather than caveated after.
+**Why guard off:** turning it on for GIN alone would give one model a different stopping rule,
+and it would be a no-op anyway — new best epochs 29/50/61/46/47 are all past 20.
+**Effect:** informal per-seed test ROC-AUC (not the official metric) moved by 0.01–0.03, the
+size of the thread-count noise already measured on GINE, so no architecture conclusion changes.
+The sweet attribution failure of ADR 2026-11-25 reproduces (all four sweet cases at or below
+chance, score sums 32–78); bitter and umami still pass. Numbers in `DEVLOG.md` 2026-11-27.
+**Rejected:** deleting the two-thread outputs (they back previously quoted numbers, so keeping
+them shows the before/after); leaving GIN as the one pre-fix model (the reason to keep it —
+protecting already-published Phase 4/5 numbers — expired once those numbers were shown to be
+reproducible under the new protocol).

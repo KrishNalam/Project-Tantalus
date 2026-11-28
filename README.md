@@ -166,15 +166,14 @@ docs/                      roadmap, design decisions (ADRs), learning log
   check (nearest-neighbour Morgan/Tanimoto similarity < 0.3 ⇒ out of domain), but the
   probability itself is not corrected or withheld.
 - Sweet attributions fail the pharmacophore sanity check: they track molecule size because GIN
-  sums over atoms. A mean-pooling GIN (`gin_mean`) removes the size effect (saccharin and
+  sums over atoms. This is unchanged on the regenerated one-thread GIN (2026-11-27): all four
+  sweet cases score at or below chance. A mean-pooling GIN (`gin_mean`) removes the size effect (saccharin and
   acesulfame move from 0.00 to 0.50 precision at k, above chance) but sucrose still scores 0.00,
   and one of its five seeds stopped at epoch 3 with sweet test AUC 0.59. Rerunning the check
   with that seed fixed by a minimum-epoch guard (`gin_mean_min20`) changes nothing except sucrose
   0.00 → 0.125, still below chance, so the weak sweet localisation is not that seed's fault. The demo keeps the
   sum-pooling GIN until scoring says which is better. Bitter and umami land on the expected groups.
 - Heatmap colours are scaled per molecule, so intensities can't be compared across drawings.
-- GCN and GINE checkpoints/predictions come from the reproducible one-thread training. The
-  five GIN checkpoints (used by the demo, API and attribution sanity check) predate it, so a
-  fresh `run_gnn.py gin` reproduces itself exactly but differs slightly from them. Thread
-  count alone moved GINE's sweet test AUC by ~0.03, so single-run architecture gaps that small
-  are noise.
+- All GNN checkpoints/predictions (GCN, GIN, GINE, mean-pooling GIN) come from the
+  reproducible one-thread training (GIN regenerated 2026-11-27). Thread count alone moved
+  test AUCs by ~0.01–0.03, so single-run architecture gaps that small are noise.

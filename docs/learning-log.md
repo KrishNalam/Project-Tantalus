@@ -305,3 +305,7 @@ TODO:
 ### Skipping the validation pass for the first 20 epochs changed the *training* of every seed, even though validation never updates weights. Iterating a `DataLoader` uses up torch's global random number generator. Why does that change the dropout masks in later training batches, and how would you make a training run's randomness immune to extra evaluation calls?
 
 TODO:
+
+### Retraining GIN on one thread left bitter/umami attributions where they were, but denatonium's integrated-gradients completeness gap grew from 0.45 to 3.5 at the same 128 steps (score sum 33.4). What does the completeness gap measure, why would a different-but-equally-good model need more steps to close it, and does a large gap invalidate the *ranking* of atoms in a heatmap?
+
+TODO:
