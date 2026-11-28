@@ -313,3 +313,7 @@ TODO:
 ### On the random split, Random Forest on Morgan fingerprints beats GIN on sweet by about 0.09 ROC-AUC (0.93 vs. 0.84, informal). Why would a fingerprint + tree model profit more than a GNN when test molecules have close analogues in train? What does that say about which split a model comparison should be made on?
 
 TODO:
+
+### The Random Forest's prediction file has ~200 umami test rows with a probability of exactly 0.0 (no tree voted positive), while XGBoost has none. How do ROC-AUC and average precision treat a block of tied scores, and why can a model with many ties look slightly different under the two metrics even when its ranking is otherwise the same?
+
+TODO:

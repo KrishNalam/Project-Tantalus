@@ -87,7 +87,9 @@ chose the early-stopping epoch.
 | GIN, mean pooling, min. 20 epochs | graph (atoms) | pending | pending |
 
 All predictions exist in `data/processed/predictions/`; the table is filled once the
-evaluation code (`evaluate.py`) is written.
+evaluation code (`evaluate.py`) is written. Before scoring, `scripts/check_predictions.py`
+confirms that every file scores exactly its seed's val + test molecules (no train rows), with
+true labels matching `molecules.csv`.
 
 ## Setup
 
@@ -106,6 +108,7 @@ uv run python scripts/run_gnn.py gcn     # ~7 min on CPU, -> data/processed/pred
 uv run python scripts/run_gnn.py gin     # ~6 min on CPU, -> data/processed/predictions/gin.csv
 uv run python scripts/run_gnn.py gine    # ~6 min on CPU, -> data/processed/predictions/gine.csv (bond features)
 uv run python scripts/run_gnn.py gin --split random  # ~6 min, -> gin_random.csv (salty/sour comparison)
+uv run python scripts/check_predictions.py  # integrity check of every predictions/*.csv (no scores)
 uv run python scripts/explain_molecule.py "CN1C=NC2=C1C(=O)N(C(=O)N2C)C" bitter  # heatmap PNG (needs gin checkpoints)
 uv run python -m tantalus.demo           # Gradio demo on http://127.0.0.1:7860 (needs gin checkpoints)
 uv run jupyter lab                       # notebooks/00_explore.ipynb
@@ -123,6 +126,7 @@ uv run pytest
 ```
 scripts/download_data.py   pinned dataset downloads (ChemTastesDB, BitterDB)
 scripts/build_data.py      Phase 1 pipeline: merged table, scaffold (+ comparison random) splits, class balance
+scripts/check_predictions.py  pre-scoring check: each prediction file covers exactly its split's val/test rows
 scripts/report_split_similarity.py data quality: nearest-train similarity of val/test, scaffold vs. random split
 scripts/run_baseline.py    Phase 2: RF / XGBoost baselines, val/test predictions per seed
 scripts/run_gnn.py         Phase 3: GNN training per seed, same prediction format as the baselines; saves per-seed checkpoints

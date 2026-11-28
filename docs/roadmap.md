@@ -32,7 +32,7 @@ and class balance reported.
 - [x] Morgan fingerprints → Random Forest (`models/baselines.py` + `scripts/run_baseline.py random_forest`: one class-weighted forest per label, seeds 0–4, val/test probabilities → `data/processed/predictions/random_forest.csv`; scores pending the owner's `evaluate.py`)
 - [x] Morgan fingerprints → XGBoost (`baselines.train_xgboost` + `scripts/run_baseline.py xgboost`: one `scale_pos_weight`-weighted model per label, default hyperparameters, seeds 0–4 → `data/processed/predictions/xgboost.csv`; CPU-only `xgboost-cpu` wheel)
 - [x] Random split saved as a deliberate comparison, the only place salty/sour are scored (`data.random_split` → `random_splits.csv`; `run_baseline.py <model> --split random` → `predictions/<model>_random.csv`; see ADR 2026-11-23)
-- [ ] Scaffold split, multiple seeds, per-label ROC-AUC / PR-AUC (mean ± std)
+- [ ] Scaffold split, multiple seeds, per-label ROC-AUC / PR-AUC (mean ± std) (every prediction file passes `scripts/check_predictions.py`: exactly its seed's val+test rows, labels match, probabilities valid; ADR 2026-11-27; scores wait on `evaluate.py`)
 
 Done when: baseline metrics are recorded on the scaffold split as the number the GNN must beat.
 

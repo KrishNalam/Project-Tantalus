@@ -734,3 +734,28 @@ guard, but its AUCs are in line with the other seeds.
 **Rejected:** reporting salty/sour from the scaffold-split GIN (0–2 test positives, as the ADR
 2026-11-23 explains); also training GCN/GINE/`gin_mean` on the random split (see above, and
 easy to add later with the same command).
+
+### 2026-11-27 — Check every prediction file against its split before scoring
+
+**Decision:** added `scripts/check_predictions.py`. For each `predictions/*.csv`, it checks the
+shared column format and, per seed, that the scored rows are exactly that seed's val + test
+molecules in the right split file (`*_random.csv` → `random_splits.csv`, otherwise
+`splits.csv`). That means no train molecule, none missing, no duplicates, and the `split`
+column agrees with the file. It also checks that `<label>_true` equals `molecules.csv` and that
+probabilities are finite and in [0, 1]. It counts probabilities saturated to exactly 0.0/1.0
+and exits 1 on any failure. It computes no metrics: those are the owner's `evaluate.py`.
+**Why:** ten prediction files from three code paths (RF/XGBoost runner, GNN runner, two split
+files) will be compared in one table. A train molecule in a scored row (leakage), a file scored
+against the wrong split, or a stale file from before the data rebuild would all silently change
+the numbers. Checking once, before any score exists, is cheaper than explaining a suspicious
+result later. All 10 current files pass, and five deliberately corrupted copies (a train
+molecule added, a row dropped, a flipped label, a probability > 1, val/test swapped) are each
+caught.
+**Finding:** Random Forest has 2696 saturated probabilities on the scaffold split (3623 on the
+random split), mostly exact 0.0 because no tree voted positive (umami test: 198 of 1870 rows).
+XGBoost has 0. Exact ties are legal for ROC/PR-AUC, but `evaluate.py` should rank ties
+consistently: sklearn's `roc_auc_score` gives tied pairs half credit, while `average_precision_score`
+treats a tied block as one threshold.
+**Rejected:** putting these checks inside `evaluate.py` (owner's file) or `tests/` (owner's
+folder); asserting inside each runner at write time (it would not catch a file that went stale
+after `build_data.py` was rerun).
