@@ -711,3 +711,26 @@ chance, score sums 32–78); bitter and umami still pass. Numbers in `DEVLOG.md`
 them shows the before/after); leaving GIN as the one pre-fix model (the reason to keep it —
 protecting already-published Phase 4/5 numbers — expired once those numbers were shown to be
 reproducible under the new protocol).
+
+### 2026-11-27 — GIN on the random split as the GNN side of the salty/sour comparison
+
+**Decision:** trained the default GIN on the saved random split (`run_gnn.py gin --split
+random` → `predictions/gin_random.csv`, `checkpoints/gin_random_seed{0..4}.pt`). The training
+protocol is unchanged: one thread, guard off, same hyperparameters, so it matches the
+scaffold-split GIN. No code changed, because `run_gnn.py` already supported `--split random`.
+**Why:** the 2026-11-23 ADR scores salty and sour only on the random split. Until now only RF
+and XGBoost had predictions there, so the GNN had no number at all for those two labels on a
+split where they can be scored. GIN is the model the demo serves, so it is the one whose
+salty/sour numbers a user actually sees.
+**Why only GIN:** the random split is a flagged side comparison, not the headline. One GNN is
+enough to answer "is the served model competitive on salty/sour?". Running all five GNN variants
+would add 30 minutes of CPU for a table nobody headlines.
+**Caveat (informal, not the official metric):** per-seed test ROC-AUC on the random split puts
+GIN well behind the fingerprint models on sweet/bitter (0.84/0.85 vs. RF 0.93/0.94). It is about
+level on sour (0.91 vs. 0.91) and salty (0.98 vs. 0.97). Fingerprints gain most from the
+near-neighbour overlap that the random split allows (ADR 2026-11-26, split similarity), so do not
+assume this gap carries over to the scaffold split. Seed 3 picked epoch 19, which is below the 20-epoch
+guard, but its AUCs are in line with the other seeds.
+**Rejected:** reporting salty/sour from the scaffold-split GIN (0–2 test positives, as the ADR
+2026-11-23 explains); also training GCN/GINE/`gin_mean` on the random split (see above, and
+easy to add later with the same command).

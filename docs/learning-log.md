@@ -309,3 +309,7 @@ TODO:
 ### Retraining GIN on one thread left bitter/umami attributions where they were, but denatonium's integrated-gradients completeness gap grew from 0.45 to 3.5 at the same 128 steps (score sum 33.4). What does the completeness gap measure, why would a different-but-equally-good model need more steps to close it, and does a large gap invalidate the *ranking* of atoms in a heatmap?
 
 TODO:
+
+### On the random split, Random Forest on Morgan fingerprints beats GIN on sweet by about 0.09 ROC-AUC (0.93 vs. 0.84, informal). Why would a fingerprint + tree model profit more than a GNN when test molecules have close analogues in train? What does that say about which split a model comparison should be made on?
+
+TODO:

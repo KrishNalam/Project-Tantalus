@@ -32,7 +32,7 @@ tracked in [`docs/roadmap.md`](docs/roadmap.md).
 | 0 | Setup, featurization, exploration notebook | mostly done |
 | 1 | Data loading, cleaning, merging, scaffold split | done (3728 molecules, scaffold splits for 5 seeds, class balance reported) |
 | 2 | Fingerprint baselines | in progress (Random Forest and XGBoost trained on 5 scaffold splits, plus a random split for comparison; scoring next) |
-| 3 | GNNs | in progress (GCN, GIN and a bond-aware MPNN (GINE) trained on 5 scaffold splits with early stopping; per-seed weights saved for Phase 4; scoring pending) |
+| 3 | GNNs | in progress (GCN, GIN and a bond-aware MPNN (GINE) trained on 5 scaffold splits with early stopping, plus GIN on the random split for the salty/sour comparison; per-seed weights saved for Phase 4; scoring pending) |
 | 4 | Explainability | in progress (integrated-gradients atom attributions for saved GNN checkpoints, rendered as RDKit heatmaps, averaged over 5 seeds and checked against known pharmacophores: bitter/umami pass, **sweet fails** — see `docs/decisions.md` 2026-11-25; a mean-pooling GIN removes the size artefact but only partly fixes sweet, 2026-11-26) |
 | 5 | Demo and write-up | in progress (FastAPI `POST /predict`: SMILES -> 5-seed GIN probabilities + averaged attribution PNG; Gradio page `uv run python -m tantalus.demo`; both flag molecules outside the applicability domain; README architecture diagram and limitations written, results table waits on scoring) |
 
@@ -105,6 +105,7 @@ uv run python scripts/run_gnn.py gcn     # ~7 min on CPU, -> data/processed/pred
                                          #   (+ data/processed/checkpoints/gcn_seed<k>.pt)
 uv run python scripts/run_gnn.py gin     # ~6 min on CPU, -> data/processed/predictions/gin.csv
 uv run python scripts/run_gnn.py gine    # ~6 min on CPU, -> data/processed/predictions/gine.csv (bond features)
+uv run python scripts/run_gnn.py gin --split random  # ~6 min, -> gin_random.csv (salty/sour comparison)
 uv run python scripts/explain_molecule.py "CN1C=NC2=C1C(=O)N(C(=O)N2C)C" bitter  # heatmap PNG (needs gin checkpoints)
 uv run python -m tantalus.demo           # Gradio demo on http://127.0.0.1:7860 (needs gin checkpoints)
 uv run jupyter lab                       # notebooks/00_explore.ipynb
